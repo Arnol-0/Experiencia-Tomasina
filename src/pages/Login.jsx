@@ -5,7 +5,7 @@ import { LogIn } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import loginSvg from '../assets/Login.svg';
 import lottie from 'lottie-web';
-import loginAnimation from '../assets/login.json';
+import loginAnimation from '../assets/Login.json';
 import './Login.css';
 
 const Login = () => {
