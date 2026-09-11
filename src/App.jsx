@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Directory from './pages/Directory';
 import StudentProfile from './pages/StudentProfile';
 import Login from './pages/Login';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -18,19 +19,21 @@ const PrivateRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router>
-      <div className="app-layout">
-        <Navbar />
-        <main>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/directorio" element={<PrivateRoute><Directory /></PrivateRoute>} />
-            <Route path="/student/:id" element={<PrivateRoute><StudentProfile /></PrivateRoute>} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <div className="app-layout">
+          <Navbar />
+          <main>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/directorio" element={<PrivateRoute><Directory /></PrivateRoute>} />
+              <Route path="/student/:id" element={<PrivateRoute><StudentProfile /></PrivateRoute>} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
