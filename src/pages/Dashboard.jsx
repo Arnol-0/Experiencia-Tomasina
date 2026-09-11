@@ -95,10 +95,10 @@ const Dashboard = () => {
   };
 
   React.useEffect(() => {
-    if (user.role === 'admin' || user.role === 'coordinador') {
+    if (user?.role === 'admin' || user?.role === 'coordinador') {
       fetchStaff();
     }
-  }, [user.role]);
+  }, [user?.role]);
 
   const handleDeleteSystemUser = async (userId) => {
     if (!window.confirm("¿Estás seguro de eliminar el perfil de este usuario? Perderá acceso al sistema.")) return;
@@ -132,12 +132,12 @@ const Dashboard = () => {
     }
   };
 
-  const isGlobal = user.role === 'admin' || user.role === 'coordinador';
-  const displayBranch = isGlobal ? 'Todas las Sedes' : user.branch;
+  const isGlobal = user?.role === 'admin' || user?.role === 'coordinador';
+  const displayBranch = isGlobal ? 'Todas las Sedes' : (user?.branch || 'Sin Sede');
   
   const relevantStudents = isGlobal 
     ? studentsList 
-    : studentsList.filter(s => s.branch === user.branch);
+    : studentsList.filter(s => s.branch === user?.branch);
   
   const studentsCount = relevantStudents.length;
   const pinsCount = relevantStudents.reduce((acc, curr) => acc + (curr.collectedPins?.length || 0), 0);
@@ -146,7 +146,7 @@ const Dashboard = () => {
     const breakdown = {};
     
     staffList.forEach(staff => {
-      if (staff.branch && staff.branch.toLowerCase() !== 'todas' && staff.branch.toLowerCase() !== 'todas las sedes') {
+      if (typeof staff.branch === 'string' && staff.branch.toLowerCase() !== 'todas' && staff.branch.toLowerCase() !== 'todas las sedes') {
         breakdown[staff.branch] = 0;
       }
     });
@@ -533,7 +533,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {showCreateModal && user.role === 'admin' && (
+      {showCreateModal && user?.role === 'admin' && (
         <CreateUserModal 
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
@@ -542,7 +542,7 @@ const Dashboard = () => {
         />
       )}
 
-      {showSystemUsersModal && user.role === 'admin' && (
+      {showSystemUsersModal && user?.role === 'admin' && (
         <ManageUsersModal 
           isOpen={showSystemUsersModal}
           onClose={() => setShowSystemUsersModal(false)}
@@ -553,7 +553,7 @@ const Dashboard = () => {
         />
       )}
 
-      {showAddStudentModal && user.role !== 'asistente_dae' && (
+      {showAddStudentModal && user?.role !== 'asistente_dae' && (
         <div className="dashboard-modal-overlay">
           <div className="dashboard-modal-content animate-fade-in" style={{ maxWidth: '500px' }}>
             <button className="dashboard-modal-close" onClick={() => setShowAddStudentModal(false)}>
