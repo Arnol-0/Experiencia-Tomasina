@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, setDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, setDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
 
 const DataContext = createContext();
 
@@ -21,7 +21,23 @@ export const DataProvider = ({ children }) => {
 
   const addStudents = async (newStudents) => {
     for (const student of newStudents) {
-      await setDoc(doc(db, 'students', student.id), student);
+      const docRef = doc(db, 'students', student.id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        // Si el estudiante ya existe, solo actualizamos sus datos básicos, sin borrar sus pines
+        await setDoc(docRef, {
+          name: student.name,
+          rut: student.rut,
+          grade: student.grade,
+          jornada: student.jornada,
+          branch: student.branch,
+          institutionType: student.institutionType,
+          avatar: student.avatar
+        }, { merge: true });
+      } else {
+        // Si no existe, creamos el documento completo
+        await setDoc(docRef, student);
+      }
     }
   };
 
