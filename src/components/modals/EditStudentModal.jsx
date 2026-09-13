@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BaseModal from './BaseModal';
-import { Edit2, Check } from 'lucide-react';
+import { Edit2, Check, User, ArrowRight } from 'lucide-react';
 import CustomSelect from '../CustomSelect';
 
 const branchOptions = [
@@ -44,6 +44,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
     jornada: ''
   });
   const [message, setMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (student) {
@@ -60,15 +61,18 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSaving(true);
     try {
       await onSave(student.id, formData);
       setMessage('Estudiante actualizado exitosamente.');
       setTimeout(() => {
         setMessage('');
+        setIsSaving(false);
         onClose();
       }, 1500);
     } catch (err) {
       setMessage('Error al actualizar: ' + err.message);
+      setIsSaving(false);
       setTimeout(() => setMessage(''), 3000);
     }
   };
@@ -82,41 +86,72 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
           {message}
         </div>
       )}
-      <form onSubmit={handleSubmit} className="create-user-form">
-        <div className="form-group">
-          <label translate="no">RUT</label>
-          <input type="text" value={formData.rut} onChange={e=>setFormData({...formData, rut: e.target.value})} placeholder="Ej: 12345678-9" />
+      
+      {isSaving ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', textAlign: 'center', gap: '1.5rem' }}>
+          <div style={{ position: 'relative', width: '120px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={24} color="var(--color-primary)" />
+            </div>
+            <ArrowRight size={24} color="var(--color-primary)" className="transfer-arrow-anim" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }} />
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--color-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={24} color="white" />
+            </div>
+          </div>
+          <h3 style={{ margin: 0, color: 'var(--color-primary-dark)' }}>Transferencia en progreso...</h3>
+          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Actualizando datos de {formData.name}</p>
         </div>
-        <div className="form-group">
-          <label>Nombre Completo</label>
-          <input type="text" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} required />
-        </div>
-        <div className="form-group">
-          <label>Carrera / Programa</label>
-          <input type="text" value={formData.grade} onChange={e=>setFormData({...formData, grade: e.target.value})} required />
-        </div>
-        <div className="form-group">
-          <label>Sede (Corrección)</label>
-          <CustomSelect 
-            value={formData.branch} 
-            onChange={(val) => setFormData({...formData, branch: val})} 
-            options={branchOptions} 
-            placeholder="Seleccionar Sede" 
-          />
-        </div>
-        <div className="form-group">
-          <label>Tipo de Institución</label>
-          <CustomSelect 
-            value={formData.institutionType} 
-            onChange={(val) => setFormData({...formData, institutionType: val})} 
-            options={instOptions} 
-            placeholder="Seleccionar Institución" 
-          />
-        </div>
-        <button type="submit" className="create-btn" style={{ marginTop: '1rem', width: '100%', justifyContent: 'center' }}>
-          <Check size={18} style={{ marginRight: '0.5rem' }} /> Guardar Cambios
-        </button>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="create-user-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label translate="no">RUT (opcional)</label>
+              <input type="text" value={formData.rut} onChange={e=>setFormData({...formData, rut: e.target.value})} placeholder="Ej: 12345678-9" />
+            </div>
+            <div className="form-group">
+              <label>Nombre Completo</label>
+              <input type="text" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} required />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Carrera / Programa</label>
+              <input type="text" value={formData.grade} onChange={e=>setFormData({...formData, grade: e.target.value})} required />
+            </div>
+            <div className="form-group">
+              <label>Sede (Corrección)</label>
+              <CustomSelect 
+                value={formData.branch} 
+                onChange={(val) => setFormData({...formData, branch: val})} 
+                options={branchOptions} 
+                placeholder="Seleccionar Sede" 
+              />
+            </div>
+          </div>
+          
+          <div className="form-row" style={{ gridTemplateColumns: '1fr' }}>
+            <div className="form-group">
+              <label>Tipo de Institución</label>
+              <CustomSelect 
+                value={formData.institutionType} 
+                onChange={(val) => setFormData({...formData, institutionType: val})} 
+                options={instOptions} 
+                placeholder="Seleccionar Institución" 
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+            <button type="button" onClick={onClose} className="btn-outline" style={{ flex: 1, justifyContent: 'center' }}>
+              Cancelar
+            </button>
+            <button type="submit" className="create-btn" style={{ flex: 1, justifyContent: 'center', marginTop: 0 }}>
+              <Check size={18} style={{ marginRight: '0.5rem' }} /> Guardar Cambios
+            </button>
+          </div>
+        </form>
+      )}
     </BaseModal>
   );
 };

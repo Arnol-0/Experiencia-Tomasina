@@ -338,6 +338,16 @@
   100% { transform: scale(1); }
 }
 
+@keyframes transfer-arrow {
+  0% { left: 20%; opacity: 0; }
+  50% { opacity: 1; }
+  100% { left: 80%; opacity: 0; }
+}
+
+.transfer-arrow-anim {
+  animation: transfer-arrow 1.5s infinite linear;
+}
+
 .success-animation-container h3 {
   font-size: 1.5rem;
   color: var(--color-primary-dark);
