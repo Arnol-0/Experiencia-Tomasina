@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Edit2 } from 'lucide-react';
 import './StudentCard.css';
 
-const StudentCard = ({ student }) => {
+const StudentCard = ({ student, onEdit }) => {
   const uncollectedAvailable = (student.availablePins || []).filter(
     pinId => !(student.collectedPins || []).includes(pinId)
   );
@@ -14,7 +14,18 @@ const StudentCard = ({ student }) => {
       <div className="student-header">
         <img src={student.avatar} alt={student.name} className="student-avatar" />
         <div className="student-info">
-          <h3 className="student-name">{student.name}</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <h3 className="student-name" style={{ margin: 0 }}>{student.name}</h3>
+            {onEdit && (
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(student); }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.2rem' }}
+                title="Editar Estudiante"
+              >
+                <Edit2 size={16} />
+              </button>
+            )}
+          </div>
           {(student.rut || student.id) && !String(student.id).startsWith('imported') && (
             <span className="student-rut" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 500 }}>
               RUT: {student.rut || student.id}

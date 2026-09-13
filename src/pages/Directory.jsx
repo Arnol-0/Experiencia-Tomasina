@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import StudentCard from '../components/StudentCard';
+import EditStudentModal from '../components/modals/EditStudentModal';
 import { Search, Grid, List, ChevronLeft, ChevronRight, Award } from 'lucide-react';
 import './Directory.css';
 
@@ -10,10 +11,12 @@ const Directory = () => {
   const [showOnlyAvailablePins, setShowOnlyAvailablePins] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
+  const [editingStudent, setEditingStudent] = useState(null);
   const { user } = useAuth();
-  const { studentsList } = useData();
+  const { studentsList, updateStudent } = useData();
 
   const isGlobal = user.role === 'admin';
+  const canEdit = user.role === 'admin' || user.role === 'coordinador';
   const relevantStudents = isGlobal 
     ? studentsList 
     : studentsList.filter(s => s.branch === user.branch);
@@ -145,7 +148,11 @@ const Directory = () => {
       <div className={viewMode === 'grid' ? 'students-grid' : 'students-list'}>
         {currentStudents.length > 0 ? (
           currentStudents.map(student => (
-            <StudentCard key={student.id} student={student} />
+            <StudentCard 
+              key={student.id} 
+              student={student} 
+              onEdit={canEdit ? setEditingStudent : undefined} 
+            />
           ))
         ) : (
           <div className="no-results">
@@ -155,6 +162,13 @@ const Directory = () => {
       </div>
 
       {filteredStudents.length > 0 && <PaginationControls />}
+
+      <EditStudentModal 
+        isOpen={!!editingStudent}
+        onClose={() => setEditingStudent(null)}
+        student={editingStudent}
+        onSave={updateStudent}
+      />
     </div>
   );
 };
