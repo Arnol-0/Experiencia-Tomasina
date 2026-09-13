@@ -67,7 +67,7 @@ const Dashboard = () => {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportStudentsModal, setShowImportStudentsModal] = useState(false);
-  const [importBranch, setImportBranch] = useState('Arica');
+  const [importBranch, setImportBranch] = useState('Auto');
   
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showSearchEditStudentModal, setShowSearchEditStudentModal] = useState(false);
@@ -195,6 +195,9 @@ const Dashboard = () => {
         const rowGrade = getVal(['carrera', 'programa']);
         const rowJornada = getVal(['jornada', 'turno']);
         const rowInstitution = getVal(['institucion', 'institución', 'tipo']);
+        const rowBranch = getVal(['sede', 'branch', 'campus', 'sucursal']);
+        
+        const finalBranch = importBranch === 'Auto' ? (rowBranch ? String(rowBranch).trim() : 'Sin Sede') : importBranch;
 
         return {
           id: rowRut ? String(rowRut).trim() : `imported-${Date.now()}-${index}`,
@@ -203,7 +206,7 @@ const Dashboard = () => {
           avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${rowName || index}&backgroundColor=e6f2ec`,
           grade: rowGrade ? String(rowGrade).trim() : 'Sin carrera',
           jornada: rowJornada ? String(rowJornada).trim() : '',
-          branch: importBranch,
+          branch: finalBranch,
           institutionType: rowInstitution ? String(rowInstitution).trim() : '',
           bio: 'Estudiante Tomasino',
           collectedPins: [], 
@@ -215,7 +218,7 @@ const Dashboard = () => {
       });
 
       addStudents(newStudents);
-      setMessage(`Se importaron ${newStudents.length} estudiantes a la sede ${importBranch}.`);
+      setMessage(`Se importaron ${newStudents.length} estudiantes ${importBranch === 'Auto' ? 'con sus respectivas sedes' : `a la sede ${importBranch}`}.`);
       setShowImportStudentsModal(false);
       setTimeout(() => setMessage(''), 5000);
     };
@@ -520,7 +523,7 @@ const Dashboard = () => {
                 <CustomSelect 
                   value={importBranch} 
                   onChange={setImportBranch} 
-                  options={branchOptions} 
+                  options={[{ value: 'Auto', label: 'Automático (Detectar en Excel)' }, ...branchOptions]} 
                   placeholder="Seleccionar Sede Destino" 
                 />
               </div>
