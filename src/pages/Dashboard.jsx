@@ -577,7 +577,7 @@ const Dashboard = () => {
             
             <form onSubmit={handleAddStudent} className="create-user-form">
               <div className="form-group">
-                <label>RUT (opcional)</label>
+                <label translate="no">RUT (opcional)</label>
                 <input type="text" value={newStudentRut} onChange={e=>setNewStudentRut(e.target.value)} placeholder="Ej: 12345678-9" />
               </div>
               <div className="form-group">

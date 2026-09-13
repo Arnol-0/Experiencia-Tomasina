@@ -84,7 +84,7 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
       )}
       <form onSubmit={handleSubmit} className="create-user-form">
         <div className="form-group">
-          <label>RUT</label>
+          <label translate="no">RUT</label>
           <input type="text" value={formData.rut} onChange={e=>setFormData({...formData, rut: e.target.value})} placeholder="Ej: 12345678-9" />
         </div>
         <div className="form-group">

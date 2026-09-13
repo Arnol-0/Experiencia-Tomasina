@@ -302,7 +302,7 @@
   position: relative;
   box-shadow: var(--shadow-xl);
   max-height: 90vh;
-  overflow-y: visible;
+  overflow-y: auto;
 }
 
 .system-users-list {
