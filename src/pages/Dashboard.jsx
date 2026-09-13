@@ -14,6 +14,7 @@ import SidebarActions from '../components/SidebarActions';
 import { excelService } from '../services/excelService';
 import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
+import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
 
 const branchOptions = [
   {
@@ -69,6 +70,7 @@ const Dashboard = () => {
   const [importBranch, setImportBranch] = useState('Arica');
   
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showSearchEditStudentModal, setShowSearchEditStudentModal] = useState(false);
   const [showDeleteStudentModal, setShowDeleteStudentModal] = useState(false);
   const [deleteSearchTerm, setDeleteSearchTerm] = useState('');
   const [isImportingPins, setIsImportingPins] = useState(false);
@@ -395,6 +397,7 @@ const Dashboard = () => {
           user={user}
           isGlobal={isGlobal}
           onAddStudent={() => setShowAddStudentModal(true)}
+          onSearchEditStudent={() => setShowSearchEditStudentModal(true)}
           onImportStudents={() => setShowImportStudentsModal(true)}
           onExportExcel={handleExportExcel}
           onDeleteStudent={() => setShowDeleteStudentModal(true)}
@@ -550,6 +553,14 @@ const Dashboard = () => {
           setStaffList={setStaffList}
           roleOptions={roleOptions}
           branchOptions={branchOptions}
+        />
+      )}
+
+      {showSearchEditStudentModal && (user?.role === 'admin' || user?.role === 'coordinador') && (
+        <SearchEditStudentModal 
+          isOpen={showSearchEditStudentModal}
+          onClose={() => setShowSearchEditStudentModal(false)}
+          user={user}
         />
       )}
 

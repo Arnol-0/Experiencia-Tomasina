@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown } from 'lucide-react';
+import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2 } from 'lucide-react';
 
 const SidebarActions = ({ 
   user, 
@@ -10,7 +10,8 @@ const SidebarActions = ({
   onDeleteStudent, 
   onImportPins, 
   onCreateUser, 
-  onManageUsers 
+  onManageUsers,
+  onSearchEditStudent
 }) => {
   const [openAccordion, setOpenAccordion] = useState('estudiantes');
 
@@ -45,6 +46,9 @@ const SidebarActions = ({
                   <Upload size={18} /> Importar Estudiantes
                 </button>
               )}
+              <button className="btn-outline btn-outline-green" onClick={onSearchEditStudent}>
+                <Edit2 size={18} /> Editar Estudiantes
+              </button>
               <button className="btn-outline btn-outline-green" onClick={onExportExcel}>
                 <Download size={18} /> Exportar Excel
               </button>
