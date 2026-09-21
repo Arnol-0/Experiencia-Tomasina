@@ -91,7 +91,7 @@ const Login = () => {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Ej. admin@tuviaje.st"
+              placeholder="Correo@gmail.com"
               required
             />
           </div>

@@ -195,6 +195,8 @@
   width: 90%;
   position: relative;
   box-shadow: var(--shadow-xl);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-close {
