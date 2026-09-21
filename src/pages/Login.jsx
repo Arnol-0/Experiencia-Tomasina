@@ -11,6 +11,7 @@ import './Login.css';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const lottieContainer = React.useRef(null);
@@ -48,6 +49,11 @@ const Login = () => {
       // Agregamos un pequeño retraso para que se pueda apreciar la animación
       await new Promise(resolve => setTimeout(resolve, 2000));
       await login(username, password);
+      if (keepSignedIn) {
+        localStorage.setItem('keepSignedIn', 'true');
+      } else {
+        localStorage.removeItem('keepSignedIn');
+      }
     } catch (err) {
       setError('Correo o contraseña incorrectos.');
       setIsLoading(false);
@@ -100,6 +106,19 @@ const Login = () => {
               placeholder="********"
               required
             />
+          </div>
+
+          <div className="form-group checkbox-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="checkbox"
+              id="keepSignedIn"
+              checked={keepSignedIn}
+              onChange={(e) => setKeepSignedIn(e.target.checked)}
+              style={{ width: 'auto', marginBottom: 0, cursor: 'pointer' }}
+            />
+            <label htmlFor="keepSignedIn" style={{ marginBottom: 0, fontWeight: 'normal', cursor: 'pointer' }}>
+              Mantener sesión activa
+            </label>
           </div>
 
           <button type="submit" className="login-button">
