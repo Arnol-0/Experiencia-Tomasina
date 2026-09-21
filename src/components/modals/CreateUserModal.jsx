@@ -8,7 +8,7 @@ const CreateUserModal = ({ isOpen, onClose, roleOptions, branchOptions }) => {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
-  const [newRole, setNewRole] = useState('cordinador');
+  const [newRole, setNewRole] = useState('coordinador');
   const [newBranch, setNewBranch] = useState('');
   const [showSuccessAnim, setShowSuccessAnim] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,7 +21,7 @@ const CreateUserModal = ({ isOpen, onClose, roleOptions, branchOptions }) => {
         password: newPassword,
         name: newName,
         role: newRole,
-        branch: newBranch
+        branch: (newRole === 'coordinador' || newRole === 'admin') ? '' : newBranch
       });
 
       setShowSuccessAnim(true);
@@ -81,15 +81,17 @@ const CreateUserModal = ({ isOpen, onClose, roleOptions, branchOptions }) => {
                   placeholder="Seleccionar Rol" 
                 />
               </div>
-              <div className="form-group">
-                <label>Sede</label>
-                <CustomSelect 
-                  value={newBranch} 
-                  onChange={setNewBranch} 
-                  options={branchOptions} 
-                  placeholder="Seleccionar Sede" 
-                />
-              </div>
+              {(newRole !== 'coordinador' && newRole !== 'admin') && (
+                <div className="form-group">
+                  <label>Sede</label>
+                  <CustomSelect 
+                    value={newBranch} 
+                    onChange={setNewBranch} 
+                    options={branchOptions} 
+                    placeholder="Seleccionar Sede" 
+                  />
+                </div>
+              )}
             </div>
             
             <button type="submit" className="create-btn" style={{ width: '100%', justifyContent: 'center' }}>Crear Usuario</button>
