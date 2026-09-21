@@ -114,7 +114,7 @@ const Login = () => {
               id="keepSignedIn"
               checked={keepSignedIn}
               onChange={(e) => setKeepSignedIn(e.target.checked)}
-              style={{ width: 'auto', marginBottom: 0, cursor: 'pointer' }}
+              style={{ width: 'auto', marginBottom: 0, cursor: 'pointer', accentColor: 'var(--color-primary)' }}
             />
             <label htmlFor="keepSignedIn" style={{ marginBottom: 0, fontWeight: 'normal', cursor: 'pointer' }}>
               Mantener sesión activa
