@@ -9,10 +9,12 @@ const StudentCard = ({ student, onEdit }) => {
   );
   const hasAvailable = uncollectedAvailable.length > 0;
   
+  const avatarUrl = student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`;
+  
   return (
     <div className={`student-card glass-panel animate-fade-in ${hasAvailable ? 'has-available-pins' : ''}`}>
       <div className="student-header">
-        <img src={student.avatar} alt={student.name} className="student-avatar" />
+        <img src={avatarUrl} alt={student.name} className="student-avatar" />
         <div className="student-info">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <h3 className="student-name" style={{ margin: 0 }}>{student.name}</h3>
