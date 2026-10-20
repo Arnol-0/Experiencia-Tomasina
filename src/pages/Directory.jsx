@@ -66,7 +66,7 @@ const BRANCH_OPTIONS = [
 const ITEMS_PER_PAGE = 10;
 
 // Cuántos estudiantes traer de Firestore en cada bloque (lazy loading)
-const BLOCK_SIZE = 20;
+const BLOCK_SIZE = 10000;
 
 const Directory = () => {
   // -------------------------------------------------------------------------
@@ -129,7 +129,7 @@ const Directory = () => {
   // FUNCIÓN: Cargar un bloque de estudiantes de Firestore
   // -------------------------------------------------------------------------
   /**
-   * Carga el siguiente bloque de BLOCK_SIZE (20) estudiantes desde Firestore.
+   * Carga el siguiente bloque de BLOCK_SIZE (20000) estudiantes desde Firestore.
    * Usa el cursor `lastDocRef.current` para continuar desde donde quedó.
    * Si el filtro de sede cambia, resetea la lista antes de consultar.
    *
@@ -190,8 +190,8 @@ const Directory = () => {
     // Carga el primer bloque
     // eslint-disable-next-line react-hooks/exhaustive-deps
     loadNextBlock(true);
-  // Queremos que se recargue cuando cambie la sede efectiva o cuando el user se establezca
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Queremos que se recargue cuando cambie la sede efectiva o cuando el user se establezca
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveBranch, user?.uid]);
 
   // -------------------------------------------------------------------------
@@ -382,6 +382,7 @@ const Directory = () => {
       </div>
 
       {/* ===== RESUMEN DE CARGA ===== */}
+      {/* ===== RESUMEN DE CARGA ===== */}
       <div className="directory-summary">
         <span className="summary-count">
           {filteredStudents.length > 0
@@ -390,11 +391,6 @@ const Directory = () => {
               ? 'Cargando estudiantes...'
               : 'No hay resultados'}
         </span>
-        {hasMore && !isLoading && !searchTerm && (
-          <span className="summary-hasmore">
-            + hay más estudiantes disponibles (usar "Cargar más")
-          </span>
-        )}
       </div>
 
       {/* ===== AVISO DE ERROR ===== */}
@@ -441,23 +437,6 @@ const Directory = () => {
 
       {/* ===== PAGINACIÓN INFERIOR ===== */}
       {filteredStudents.length > 0 && !isLoading && <PaginationControls />}
-
-      {/* ===== BOTÓN CARGAR MÁS (lazy loading / bloques de 20) ===== */}
-      {hasMore && !isLoading && (
-        <div className="load-more-wrap">
-          <button
-            id="load-more-btn"
-            className="load-more-btn"
-            onClick={() => loadNextBlock(false)}
-          >
-            <RefreshCw size={16} />
-            Cargar más estudiantes (+{BLOCK_SIZE})
-          </button>
-          <p className="load-more-hint">
-            Se han cargado <strong>{loadedStudents.length}</strong> estudiantes. Haz clic para cargar el siguiente bloque.
-          </p>
-        </div>
-      )}
 
       {/* Mensaje final cuando ya no hay más registros que cargar */}
       {!hasMore && loadedStudents.length > 0 && !isLoading && (
