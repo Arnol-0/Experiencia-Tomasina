@@ -4,6 +4,21 @@ import { Settings, Edit2, Trash2, Check, X } from 'lucide-react';
 import CustomSelect from '../CustomSelect';
 import { userService } from '../../services/userService';
 
+/**
+ * ============================================================================
+ * MODAL: ManageUsersModal (Gestión, Edición y Eliminación de Usuarios)
+ * ============================================================================
+ * 
+ * 📌 PRINCIPIOS SOLID APLICADOS:
+ * 1. SRP (Responsabilidad Única):
+ *    Se enfoca exclusivamente en listar, permitir edición en línea (inline) y
+ *    eliminar cuentas de usuarios del sistema.
+ * 2. DIP (Inversión de Dependencias):
+ *    No ejecuta consultas Firestore directamente; delega a 'userService.updateSystemUser'
+ *    y 'userService.deleteSystemUser'.
+ * 3. Composición (OCP):
+ *    Envuelto en <BaseModal> con título e icono personalizados sin alterar el código base.
+ */
 const ManageUsersModal = ({ 
   isOpen, 
   onClose, 
@@ -12,14 +27,19 @@ const ManageUsersModal = ({
   roleOptions, 
   branchOptions 
 }) => {
+  // Estado para saber cuál usuario está en modo de edición en la lista
   const [editingSystemUserId, setEditingSystemUserId] = useState(null);
   const [editSystemUserForm, setEditSystemUserForm] = useState({ name: '', role: '', branch: '' });
   const [message, setMessage] = useState('');
 
+  /**
+   * Actualiza el usuario en la base de datos y en el estado local de React
+   */
   const handleUpdateSystemUser = async (e, id) => {
     e.preventDefault();
     try {
       await userService.updateSystemUser(id, editSystemUserForm);
+      // Actualización inmutable del estado
       setStaffList(staffList.map(s => s.id === id ? { ...s, ...editSystemUserForm } : s));
       setEditingSystemUserId(null);
       setMessage('Usuario actualizado correctamente.');
@@ -29,6 +49,9 @@ const ManageUsersModal = ({
     setTimeout(() => setMessage(''), 3000);
   };
 
+  /**
+   * Elimina un usuario, protegiendo las cuentas con rol 'admin' por seguridad
+   */
   const handleDeleteSystemUser = async (id, role) => {
     if (role === 'admin') {
       setMessage('No se puede eliminar a un administrador.');
@@ -49,42 +72,89 @@ const ManageUsersModal = ({
   };
 
   return (
+    // BaseModal proporciona el diseño estándar de ventana modal con título e icono
     <BaseModal isOpen={isOpen} onClose={onClose} title="Gestión de Usuarios del Sistema" icon={Settings} maxWidth="800px">
-      {message && <div style={{ background: '#dcfce7', color: '#166534', padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '1rem', textAlign: 'center' }}>{message}</div>}
       
+      {/* Mensaje de retroalimentación (verde para éxito, visible durante 3 segundos) */}
+      {message && (
+        <div style={{ background: '#dcfce7', color: '#166534', padding: '0.5rem', borderRadius: '0.5rem', marginBottom: '1rem', textAlign: 'center' }}>
+          {message}
+        </div>
+      )}
+      
+      {/* Lista scrolleable de usuarios del personal administrativo */}
       <div className="system-users-list">
         {staffList.map(staffUser => (
           <div key={staffUser.id} className="system-user-card" style={{ border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+            
+            {/* CONDICIONAL: Si este usuario específico está en modo de edición en línea (inline edit) */}
             {editingSystemUserId === staffUser.id ? (
+              // FORMULARIO DE EDICIÓN EN LÍNEA
               <form onSubmit={(e) => handleUpdateSystemUser(e, staffUser.id)} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr 1fr auto' }}>
-                <input type="text" value={editSystemUserForm.name} onChange={e=>setEditSystemUserForm({...editSystemUserForm, name: e.target.value})} required style={{ padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}/>
+                {/* Campo para editar el nombre */}
+                <input 
+                  type="text" 
+                  value={editSystemUserForm.name} 
+                  onChange={e => setEditSystemUserForm({...editSystemUserForm, name: e.target.value})} 
+                  placeholder="Nombre"
+                  required 
+                  style={{ padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '0.25rem' }}
+                />
+                
+                {/* Selector para cambiar el rol */}
                 <CustomSelect 
                   value={editSystemUserForm.role} 
                   onChange={(val) => setEditSystemUserForm({...editSystemUserForm, role: val})} 
                   options={roleOptions} 
                 />
+
+                {/* Selector para cambiar la sede */}
                 <CustomSelect 
                   value={editSystemUserForm.branch} 
                   onChange={(val) => setEditSystemUserForm({...editSystemUserForm, branch: val})} 
                   options={branchOptions} 
                 />
+
+                {/* Botones de acción: Guardar (Check verde) o Cancelar (X roja) */}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="submit" className="btn-outline btn-outline-green" style={{ padding: '0.5rem' }}><Check size={18} /></button>
-                  <button type="button" className="btn-outline btn-outline-red" style={{ padding: '0.5rem' }} onClick={() => setEditingSystemUserId(null)}><X size={18} /></button>
+                  <button type="submit" className="btn-outline btn-outline-green" style={{ padding: '0.5rem' }} title="Guardar cambios">
+                    <Check size={18} />
+                  </button>
+                  <button type="button" className="btn-outline btn-outline-red" style={{ padding: '0.5rem' }} onClick={() => setEditingSystemUserId(null)} title="Cancelar">
+                    <X size={18} />
+                  </button>
                 </div>
               </form>
             ) : (
+              // VISTA DE LECTURA NORMAL DEL USUARIO
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h4 style={{ margin: '0 0 0.25rem 0' }}>{staffUser.name}</h4>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{staffUser.email} | <strong>Rol:</strong> {staffUser.role} | <strong>Sede:</strong> {staffUser.branch}</p>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {staffUser.email} | <strong>Rol:</strong> {staffUser.role} | <strong>Sede:</strong> {staffUser.branch || 'Todas (Nacional)'}
+                  </p>
                 </div>
+
+                {/* Botones de acción: Editar (Lápiz) y Eliminar (Papelera) */}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn-outline" style={{ padding: '0.5rem' }} onClick={() => {
-                    setEditingSystemUserId(staffUser.id);
-                    setEditSystemUserForm({ name: staffUser.name, role: staffUser.role, branch: staffUser.branch });
-                  }}><Edit2 size={16} /></button>
-                  <button className="btn-outline btn-outline-red" style={{ padding: '0.5rem' }} onClick={() => handleDeleteSystemUser(staffUser.id, staffUser.role)}>
+                  <button 
+                    className="btn-outline" 
+                    style={{ padding: '0.5rem' }} 
+                    title="Editar datos del usuario"
+                    onClick={() => {
+                      setEditingSystemUserId(staffUser.id);
+                      setEditSystemUserForm({ name: staffUser.name, role: staffUser.role, branch: staffUser.branch });
+                    }}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  
+                  <button 
+                    className="btn-outline btn-outline-red" 
+                    style={{ padding: '0.5rem' }} 
+                    title="Eliminar usuario"
+                    onClick={() => handleDeleteSystemUser(staffUser.id, staffUser.role)}
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

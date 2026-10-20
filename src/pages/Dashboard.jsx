@@ -12,6 +12,7 @@ import './Dashboard.css';
 import CustomSelect from '../components/CustomSelect';
 import SidebarActions from '../components/SidebarActions';
 import { excelService } from '../services/excelService';
+import { validationService } from '../services/validationService';
 import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
@@ -165,79 +166,101 @@ const Dashboard = () => {
 
 
 
-  const handleImportStudents = (e) => {
+  /**
+   * 1. Ingesta de Estudiantes desde archivo Excel con Validaciones Previas
+   */
+  const handleImportStudents = async (e) => {
     e.preventDefault();
+    setMessage('');
     const fileInput = document.getElementById('student-file-input');
     const file = fileInput?.files[0];
-    if (!file) {
-      setMessage('Por favor, selecciona un archivo Excel.');
+    
+    // Validación previa de archivo
+    const fileValidation = validationService.validateExcelFile(file);
+    if (!fileValidation.isValid) {
+      setMessage(`Error en archivo: ${fileValidation.error}`);
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
+    try {
+      // 1. Lectura segura desacoplada en excelService
+      const rawRows = await excelService.parseExcelFile(file);
 
-      const newStudents = data.map((row, index) => {
-        const getVal = (possibleNames) => {
-          const key = Object.keys(row).find(k => 
-            possibleNames.some(p => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === p.toLowerCase())
-          );
-          return key ? row[key] : undefined;
-        };
+      // 2. Validación de columnas y consistencia de datos
+      const structureValidation = validationService.validateExcelStudentsStructure(rawRows, importBranch);
+      if (!structureValidation.isValid) {
+        setMessage(`Error en formato de datos: ${structureValidation.error}`);
+        return;
+      }
 
-        const rowRut = getVal(['rut', 'id', 'identificacion']);
-        const rowName = getVal(['nombre', 'nombres', 'estudiante', 'alumno']);
-        const rowGrade = getVal(['carrera', 'programa']);
-        const rowJornada = getVal(['jornada', 'turno']);
-        const rowInstitution = getVal(['institucion', 'institución', 'tipo']);
-        const rowBranch = getVal(['sede', 'branch', 'campus', 'sucursal']);
-        
-        const finalBranch = importBranch === 'Auto' ? (rowBranch ? String(rowBranch).trim() : 'Sin Sede') : importBranch;
+      // 3. Preparación de los estudiantes validados
+      const newStudents = structureValidation.validRows.map((row, index) => ({
+        ...row,
+        avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(row.name || index)}&backgroundColor=e6f2ec`,
+        collectedPins: [], 
+        availablePins: [],
+        journeyEvents: [
+          { date: new Date().toISOString(), title: 'Ingreso al Sistema', description: 'Registro creado mediante importación masiva.' }
+        ]
+      }));
 
-        return {
-          id: rowRut ? String(rowRut).trim() : `imported-${Date.now()}-${index}`,
-          rut: rowRut ? String(rowRut).trim() : '',
-          name: rowName || 'Sin Nombre',
-          avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${rowName || index}&backgroundColor=e6f2ec`,
-          grade: rowGrade ? String(rowGrade).trim() : 'Sin carrera',
-          jornada: rowJornada ? String(rowJornada).trim() : '',
-          branch: finalBranch,
-          institutionType: rowInstitution ? String(rowInstitution).trim() : '',
-          bio: 'Estudiante Tomasino',
-          collectedPins: [], 
-          availablePins: [],
-          journeyEvents: [
-            { date: new Date().toISOString(), title: 'Ingreso al Sistema', description: 'Registro creado mediante importación.' }
-          ]
-        };
-      });
+      // 4. Ingesta en Firestore
+      await addStudents(newStudents);
+      
+      let msg = `¡Éxito! Se importaron ${newStudents.length} estudiantes correctamente ${importBranch === 'Auto' ? 'con detección automática de sede' : `a la sede ${importBranch}`}.`;
+      if (structureValidation.invalidCount > 0) {
+        msg += ` (${structureValidation.invalidCount} filas incompletas omitidas).`;
+      }
+      if (structureValidation.rutsWithFormatWarning > 0) {
+        msg += ` Nota: ${structureValidation.rutsWithFormatWarning} estudiantes tienen formato de RUT no estándar.`;
+      }
 
-      addStudents(newStudents);
-      setMessage(`Se importaron ${newStudents.length} estudiantes ${importBranch === 'Auto' ? 'con sus respectivas sedes' : `a la sede ${importBranch}`}.`);
+      setMessage(msg);
       setShowImportStudentsModal(false);
-      setTimeout(() => setMessage(''), 5000);
-    };
-    reader.readAsBinaryString(file);
+      setTimeout(() => setMessage(''), 6000);
+    } catch (error) {
+      setMessage(`Error al procesar archivo: ${error.message}`);
+      setTimeout(() => setMessage(''), 6000);
+    }
   };
 
-  const handleImportPins = (e) => {
+  /**
+   * 2. Ingesta y Asignación de Pines desde Excel con Validación
+   */
+  const handleImportPins = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validación de archivo
+    const fileValidation = validationService.validateExcelFile(file);
+    if (!fileValidation.isValid) {
+      setMessage(`Error en archivo de pines: ${fileValidation.error}`);
+      setTimeout(() => setMessage(''), 5000);
+      e.target.value = null;
+      return;
+    }
+
     setIsImportingPins(true);
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
+    setMessage('');
+
+    try {
+      const data = await excelService.parseExcelFile(file);
+
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("El archivo de pines está vacío o no contiene filas con datos.");
+      }
+
+      // Verificación de existencia de columna RUT
+      const firstRow = data[0];
+      const hasRutCol = Object.keys(firstRow).some(k => 
+        ['rut', 'id', 'identificacion', 'cedula'].some(p => 
+          k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === p.toLowerCase()
+        )
+      );
+
+      if (!hasRutCol) {
+        throw new Error("El archivo no contiene la columna obligatoria 'RUT' para asociar los pines a los alumnos.");
+      }
 
       let updateCount = 0;
 
@@ -249,13 +272,14 @@ const Dashboard = () => {
           return key ? row[key] : undefined;
         };
 
-        const rowRut = String(getVal(['rut', 'id', 'identificacion']) || '').trim();
+        const rowRut = String(getVal(['rut', 'id', 'identificacion', 'cedula']) || '').trim();
         if (!rowRut) continue;
 
-        const cleanRowRut = rowRut.replace(/[^0-9kK]/g, '').toLowerCase();
+        const cleanRowRut = validationService.cleanRut(rowRut);
 
+        // Busca al estudiante por su RUT limpio
         const existingStudent = studentsList.find(s => {
-          const dbRut = String(s.rut || s.id || '').replace(/[^0-9kK]/g, '').toLowerCase();
+          const dbRut = validationService.cleanRut(s.rut || s.id);
           return dbRut === cleanRowRut;
         });
         
@@ -292,35 +316,81 @@ const Dashboard = () => {
         }
       }
 
-      setMessage(`Se actualizaron pines para ${updateCount} estudiantes.`);
+      setMessage(`¡Proceso completado! Se actualizaron los pines de ${updateCount} estudiantes.`);
       setTimeout(() => setMessage(''), 5000);
-      } catch (error) {
-        console.error("Error importando pines:", error);
-        setMessage("Hubo un error al procesar el Excel.");
-        setTimeout(() => setMessage(''), 5000);
-      } finally {
-        setIsImportingPins(false);
-      }
-    };
-    reader.readAsBinaryString(file);
-    e.target.value = null;
+    } catch (error) {
+      console.error("Error importando pines:", error);
+      setMessage(`Error al procesar archivo de pines: ${error.message}`);
+      setTimeout(() => setMessage(''), 6000);
+    } finally {
+      setIsImportingPins(false);
+      e.target.value = null;
+    }
   };
 
+  /**
+   * 3. Exportación a Excel mediante excelService
+   */
   const handleExportExcel = () => {
-    setTimeout(() => setMessage(''), 3000);
+    const studentsToExport = isGlobal ? studentsList : studentsList.filter(s => s.branch === user.branch);
+    if (!studentsToExport || studentsToExport.length === 0) {
+      setMessage('No hay estudiantes disponibles para exportar.');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    excelService.exportToExcel(studentsToExport, `Estudiantes_${isGlobal ? 'Nacional' : user.branch}.xlsx`);
+    setMessage('¡Descarga de Excel generada exitosamente!');
+    setTimeout(() => setMessage(''), 4000);
   };
 
+  /**
+   * 4. Registro Manual de Estudiante con Validaciones de Obligatoriedad y RUT
+   */
   const handleAddStudent = async (e) => {
     e.preventDefault();
-    const id = newStudentRut ? String(newStudentRut).trim() : `manual-${Date.now()}`;
+    setMessage('');
+
+    // Validación 1: Campos obligatorios
+    if (!newStudentName.trim()) {
+      setMessage('Error: El nombre del estudiante es obligatorio.');
+      return;
+    }
+    if (!newStudentGrade.trim()) {
+      setMessage('Error: La carrera o programa es obligatorio.');
+      return;
+    }
+
+    // Validación 2: Formato de RUT
+    let finalRut = newStudentRut.trim();
+    let finalId = `manual-${Date.now()}`;
+
+    if (finalRut) {
+      const rutValidation = validationService.validateRut(finalRut);
+      if (!rutValidation.isValid) {
+        setMessage(`Error en RUT: ${rutValidation.error}`);
+        return;
+      }
+      finalRut = rutValidation.formatted;
+      finalId = rutValidation.cleaned;
+    } else {
+      setMessage('Error: El RUT del estudiante es obligatorio.');
+      return;
+    }
+
+    const assignedBranch = isGlobal ? newBranch : user.branch;
+    if (!assignedBranch) {
+      setMessage('Error: Debes asignar una sede al estudiante.');
+      return;
+    }
+
     const newStudent = {
-      id,
-      rut: newStudentRut,
-      name: newStudentName || 'Sin Nombre',
-      avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${newStudentName || 'manual'}&backgroundColor=e6f2ec`,
-      grade: newStudentGrade || 'Sin carrera',
+      id: finalId,
+      rut: finalRut,
+      name: newStudentName.trim(),
+      avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(newStudentName)}&backgroundColor=e6f2ec`,
+      grade: newStudentGrade.trim(),
       jornada: '',
-      branch: isGlobal ? newBranch : user.branch,
+      branch: assignedBranch,
       institutionType: newStudentInstType,
       bio: 'Estudiante Tomasino',
       collectedPins: [], 
@@ -329,14 +399,16 @@ const Dashboard = () => {
         { date: new Date().toISOString(), title: 'Ingreso Manual', description: 'Registro creado manualmente en el sistema.' }
       ]
     };
+
     await addStudents([newStudent]);
-    setMessage('Estudiante agregado exitosamente.');
+    setMessage('¡Estudiante agregado exitosamente!');
     setShowAddStudentModal(false);
     setNewStudentRut('');
     setNewStudentName('');
     setNewStudentGrade('');
-    setTimeout(() => setMessage(''), 3000);
+    setTimeout(() => setMessage(''), 4000);
   };
+
 
   const handleDeleteStudent = async (studentId) => {
     if (window.confirm("¿Estás seguro de eliminar este estudiante? Esta acción es irreversible.")) {

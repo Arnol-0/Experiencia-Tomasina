@@ -217,3 +217,207 @@
     gap: 1rem;
   }
 }
+
+/* ============================================================
+   INDICADOR OFFLINE
+   Aparece en la cabecera cuando navigator.onLine es false
+   ============================================================ */
+.offline-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto 1.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 180, 0, 0.15);
+  border: 1px solid rgba(255, 180, 0, 0.4);
+  color: #b07800;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   ALERTA DE ÍNDICE COMPUESTO REQUERIDO
+   Se muestra cuando Firestore pide crear un índice compuesto
+   ============================================================ */
+.index-warning-banner {
+  margin: 0 auto 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 120, 0, 0.08);
+  border: 1px solid rgba(255, 120, 0, 0.3);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  max-width: 700px;
+}
+.index-warning-banner a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   FILTRO POR SEDE (solo admin)
+   ============================================================ */
+.branch-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 220px;
+}
+.branch-filter-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   RESUMEN: "Mostrando X de Y — Z cargados"
+   ============================================================ */
+.directory-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.summary-count {
+  font-weight: 500;
+}
+.summary-hasmore {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+/* ============================================================
+   BANNER DE ERROR AL CARGAR
+   ============================================================ */
+.load-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-lg);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #b91c1c;
+  font-size: 0.875rem;
+}
+.retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.85rem;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: var(--radius-full);
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.retry-btn:hover {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+/* ============================================================
+   SPINNER DE CARGA
+   ============================================================ */
+.loading-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Animación de rotación para el ícono del spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spinning-icon {
+  animation: spin 1.2s linear infinite;
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   BOTÓN "CARGAR MÁS" (Lazy Loading / bloques de 20)
+   ============================================================ */
+.load-more-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 2.5rem 0 1rem;
+}
+.load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.01em;
+}
+.load-more-btn:hover {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.load-more-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Mensaje final "Todos cargados" */
+.all-loaded-msg {
+  text-align: center;
+  margin: 2rem 0 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding: 0.75rem 1.5rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  display: inline-block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* ============================================================
+   RESPONSIVE — Ajustes para pantallas pequeñas
+   ============================================================ */
+@media (max-width: 768px) {
+  .branch-filter-wrap {
+    width: 100%;
+  }
+  .directory-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  .load-more-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

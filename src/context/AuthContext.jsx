@@ -3,6 +3,23 @@ import { auth, db } from '../firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
+/**
+ * ============================================================================
+ * CONTEXTO: AuthContext (Autenticación y Ciclo de Vida de Sesión)
+ * ============================================================================
+ * 
+ * 📌 PRINCIPIOS SOLID APLICADOS:
+ * 
+ * 1. SRP (Single Responsibility Principle - Responsabilidad Única):
+ *    Se encarga de una sola cosa: la identidad del usuario logueado, su sesión
+ *    y la seguridad de inactividad. Ningún componente visual necesita preocuparse
+ *    por tokens, listeners de Auth o temporizadores de desconexión.
+ * 
+ * 2. DIP (Dependency Inversion Principle - Inversión de Dependencias):
+ *    Toda la aplicación consume la sesión mediante el hook `useAuth()`.
+ *    Si cambia la forma de autenticar (por ejemplo a OAuth o Auth0), la interfaz
+ *    permanece intacta.
+ */
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -10,10 +27,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const inactivityTimerRef = useRef(null);
 
+  // 1. Monitoreo del estado de autenticación de Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         try {
+          // Buscamos información extendida del usuario (rol, sede, nombre) en Firestore
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
@@ -34,18 +53,21 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // 2. Iniciar sesión
   const login = (email, password) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  // 3. Cerrar sesión y limpiar rastros
   const logout = () => {
     localStorage.removeItem('keepSignedIn');
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     return signOut(auth);
   };
 
-  // Inactivity tracking
+  // 4. Temporizador de inactividad (Cierre de sesión automático tras 10 min)
   useEffect(() => {
+    // Si no hay usuario o si marcó la casilla "Mantener sesión activa", no activamos el autologout
     if (!user || localStorage.getItem('keepSignedIn') === 'true') {
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
@@ -53,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutos
+    const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutos en milisegundos
 
     const resetTimer = () => {
       if (inactivityTimerRef.current) {
@@ -63,6 +85,7 @@ export const AuthProvider = ({ children }) => {
         logout();
       }, INACTIVITY_LIMIT);
     };
+
 
     const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
     

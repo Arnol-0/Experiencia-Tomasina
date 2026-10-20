@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
 import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2 } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * COMPONENTE: SidebarActions (Panel Lateral de Acciones Administrativas)
+ * ============================================================================
+ * 
+ * 📌 PRINCIPIOS SOLID APLICADOS:
+ * 
+ * 1. ISP (Interface Segregation Principle - Segregación de Interfaces):
+ *    Segrega las acciones y vistas según el rol y nivel de privilegio del usuario:
+ *    - Si es 'asistente_dae': No renderiza la barra (retorna null).
+ *    - Si no es global (es de sede local): Oculta opciones globales como importar
+ *      estudiantes o gestionar usuarios del sistema.
+ * 
+ * 2. SRP (Single Responsibility Principle - Responsabilidad Única):
+ *    Su única función es actuar como centro de comandos y disparador de eventos
+ *    (abrir modales, activar imports/exports), delegando la ejecución a las
+ *    funciones controladoras del padre.
+ */
 const SidebarActions = ({ 
   user, 
   isGlobal, 
@@ -15,7 +33,9 @@ const SidebarActions = ({
 }) => {
   const [openAccordion, setOpenAccordion] = useState('estudiantes');
 
+  // Control de acceso por rol: Asistentes DAE no tienen acceso a acciones administrativas
   if (user?.role === 'asistente_dae') return null;
+
 
   return (
     <div className="admin-sidebar">

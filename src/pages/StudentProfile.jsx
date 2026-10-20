@@ -82,14 +82,41 @@ export const PINS_CATALOG = [
   },
 ];
 
+/**
+ * ============================================================================
+ * PÁGINA: StudentProfile (Perfil del Estudiante y Recorrido de Pines)
+ * ============================================================================
+ * 
+ * 📌 ¿QUÉ HACE ESTA PÁGINA?
+ * - Muestra el detalle del estudiante: nombre, carrera, jornada, institución y sede.
+ * - Despliega el catálogo de las 12 insignias o pines formativos.
+ * - Permite al coordinador o directivo desbloquear un pin cuando el alumno
+ *   cumple y valida la actividad requerida.
+ * - Registra la fecha y actividad exacta en el historial del estudiante (`unlockRecords`).
+ * 
+ * 📌 PRINCIPIOS SOLID APLICADOS:
+ * 1. DIP (Inversión de Dependencias):
+ *    Utiliza `useData()` para persistir los cambios sin acoplarse a la API de Firestore.
+ * 2. ISP (Segregación de Interfaces):
+ *    Renderiza cada insignia mediante el componente especializado <PinCard />, pasando
+ *    únicamente los estados que le competen a esa tarjeta (`isCollected`, `isAvailable`).
+ * 3. SRP (Responsabilidad Única):
+ *    Esta pantalla solo gestiona el viaje del estudiante y la validación de sus requisitos.
+ */
 const StudentProfile = () => {
+  // 1. Obtiene el parámetro de la URL (el ID o RUT del estudiante, ej: /student/12345678-9)
   const { id } = useParams();
+  
+  // 2. Inversión de dependencias (DIP): Extrae la lista y el actualizador global
   const { studentsList, updateStudent } = useData();
   const student = studentsList.find(s => s.id === id);
+
+  // Estados locales para el modal de desbloqueo de pines
   const [selectedPin, setSelectedPin] = useState(null);
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [isUnlocking, setIsUnlocking] = useState(false);
 
+  // Si el estudiante no existe o aún está cargando la base de datos
   if (!student) {
     return (
       <div className="container profile-not-found">
@@ -99,42 +126,38 @@ const StudentProfile = () => {
     );
   }
 
-  // TEST: Auto-add available pins to 21941033-6 for testing
-  useEffect(() => {
-    if (student && student.id === '21941033-6') {
-      const currentAv = student.availablePins || [];
-      const currentCollected = student.collectedPins || [];
-      
-      const testPins = ['pin_voluntariado', 'pin_destacado'];
-      const pinsToAdd = testPins.filter(p => !currentCollected.includes(p) && !currentAv.includes(p));
-      
-      if (pinsToAdd.length > 0) {
-        updateStudent(student.id, { availablePins: [...currentAv, ...pinsToAdd] });
-      }
-    }
-  }, [student?.id]);
-
+  // --------------------------------------------------------------------------
+  // INTERACCIÓN: Clic sobre un Pin
+  // --------------------------------------------------------------------------
   const handlePinClick = (pin) => {
     const collected = student.collectedPins || [];
     const available = student.availablePins || [];
     
+    // Solo permitimos abrir el modal de desbloqueo si el pin está disponible y no ha sido ganado aún
     if (!collected.includes(pin.id) && available.includes(pin.id)) {
       setSelectedPin(pin);
-      setSelectedActivities([]);
+      setSelectedActivities([]); // Reiniciamos actividades marcadas
     }
   };
 
+  // --------------------------------------------------------------------------
+  // PROCESO DE DESBLOQUEO DEL PIN
+  // --------------------------------------------------------------------------
   const handleUnlock = async () => {
+    // Validación: debe haber seleccionado al menos una actividad y no estar ya guardando
     if (!selectedPin || selectedActivities.length === 0 || isUnlocking) return;
     
     setIsUnlocking(true);
 
+    // 1. Agregamos el pin a la lista de pines obtenidos
     const collected = student.collectedPins || [];
     const newCollectedPins = [...collected, selectedPin.id];
     
+    // 2. Lo removemos de la lista de pendientes/disponibles
     const available = student.availablePins || [];
-    const newAvailablePins = available.filter(id => id !== selectedPin.id);
+    const newAvailablePins = available.filter(pinId => pinId !== selectedPin.id);
 
+    // 3. Guardamos registro de auditoría con la fecha ISO y las actividades seleccionadas
     const unlockRecords = student.unlockRecords || {};
     const newUnlockRecords = {
       ...unlockRecords,
@@ -144,20 +167,26 @@ const StudentProfile = () => {
       }
     };
 
+    // 4. Invocamos actualización atómica a través del contexto
     await updateStudent(student.id, {
       collectedPins: newCollectedPins,
       unlockRecords: newUnlockRecords,
       availablePins: newAvailablePins
     });
 
+    // 5. Cerramos el modal de desbloqueo y reseteamos el estado de carga
     setSelectedPin(null);
     setIsUnlocking(false);
   };
 
   return (
     <div className="student-profile-page container">
-      <Link to="/directorio" className="back-link"><ArrowLeft size={20} /> Volver al directorio</Link>
+      {/* Enlace para regresar a la vista de Directorio */}
+      <Link to="/directorio" className="back-link">
+        <ArrowLeft size={20} /> Volver al directorio
+      </Link>
 
+      {/* CABECERA DEL PERFIL: Avatar, Nombre, Carrera e Institución */}
       <div className="profile-header glass-panel animate-fade-in">
         <img src={student.avatar} alt={student.name} className="profile-avatar" />
         <div className="profile-info">
@@ -172,6 +201,7 @@ const StudentProfile = () => {
         </div>
       </div>
 
+      {/* COLECCIÓN DE PINES: Grid con las 12 insignias */}
       <div className="profile-content" style={{ display: 'block' }}>
         <div className="pins-section animate-fade-in" style={{ animationDelay: '0.2s', width: '100%', margin: '0 auto' }}>
           <div className="section-title">
@@ -194,16 +224,20 @@ const StudentProfile = () => {
         </div>
       </div>
 
+      {/* MODAL DE DESBLOQUEO: Solo se abre cuando el usuario hace clic en un pin disponible */}
       {selectedPin && (
         <div className="modal-overlay">
           <div className="modal-content animate-fade-in">
+            {/* Botón para cerrar */}
             <button className="modal-close" onClick={() => setSelectedPin(null)}>
               <X size={24} />
             </button>
+            
             <h2 className="modal-title text-gradient">
               Desbloquear Pin: {selectedPin.name}
             </h2>
 
+            {/* Requisitos del catálogo para este pin */}
             <div className="pin-requirement">
               <h4>Requisito para desbloquear:</h4>
               <p>{selectedPin.requirementText}</p>
@@ -214,6 +248,7 @@ const StudentProfile = () => {
               </ul>
             </div>
 
+            {/* Lista de actividades para marcar con checkbox */}
             <div className="form-group options-group">
               <label className="options-label">
                 Selecciona la(s) actividad(es) realizada(s):
@@ -240,6 +275,7 @@ const StudentProfile = () => {
               </div>
             </div>
 
+            {/* Botón para confirmar y desbloquear con barra de progreso */}
             <button
               className={`unlock-btn ${isUnlocking ? 'is-loading' : ''}`}
               onClick={handleUnlock}
