@@ -6,6 +6,7 @@ import EditStudentModal from '../components/modals/EditStudentModal';
 import CustomSelect from '../components/CustomSelect';
 import { Search, Grid, List, Award, ChevronLeft, ChevronRight, Loader2, WifiOff, Filter, RefreshCw } from 'lucide-react';
 import { isGlobalUser, canManageStudents } from '../utils/permissions';
+import { buildCredentialsMap } from '../utils/credentials';
 import { branchOptions as CANONICAL_BRANCH_OPTIONS } from '../constants/branches';
 import './Directory.css';
 
@@ -272,6 +273,36 @@ const Directory = () => {
   );
 
   // -------------------------------------------------------------------------
+  // FUNCIÓN: Registrar entrega de credencial (lanyard / pasaporte)
+  // -------------------------------------------------------------------------
+  /**
+   * Marca una credencial como entregada desde la tarjeta del directorio.
+   *
+   * 📌 Persiste en Firestore (`students/{id}.credentials`) y además actualiza
+   * la lista local paginada, porque esa lista NO viene del listener en tiempo
+   * real de DataContext (se carga por bloques), así que sin este parche el
+   * check no se vería hasta recargar la página.
+   */
+  const handleDeliverCredential = async (studentId, credentialId) => {
+    const target = loadedStudents.find(s => s.id === studentId);
+    if (!target) return;
+
+    const credentials = buildCredentialsMap(
+      target,
+      credentialId,
+      user?.email || user?.name
+    );
+
+    // 1. Persistimos en Firestore
+    await updateStudent(studentId, { credentials });
+
+    // 2. Reflejamos el cambio de inmediato en la lista local
+    setLoadedStudents(prev =>
+      prev.map(s => (s.id === studentId ? { ...s, credentials } : s))
+    );
+  };
+
+  // -------------------------------------------------------------------------
   // RENDER PRINCIPAL
   // -------------------------------------------------------------------------
   return (
@@ -399,6 +430,7 @@ const Directory = () => {
               key={student.id}
               student={student}
               onEdit={canEdit ? setEditingStudent : undefined}
+              onDeliverCredential={canEdit ? handleDeliverCredential : undefined}
             />
           ))
         ) : !isLoading ? (

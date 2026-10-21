@@ -100,6 +100,31 @@
   background-color: var(--color-primary-dark);
 }
 
+/* ============================================================================
+   Credenciales de la tarjeta (Lanyard / Pasaporte)
+   ========================================================================== */
+
+.student-credentials {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.student-credentials-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.credential-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 /* List View Overrides */
 .students-list .student-card {
   flex-direction: row;

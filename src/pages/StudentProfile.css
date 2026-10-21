@@ -398,6 +398,52 @@
   100% { left: 80%; width: 20%; }
 }
 
+/* ============================================================================
+   Credenciales del Estudiante (Lanyard / Pasaporte)
+   ========================================================================== */
+
+.credentials-panel {
+  padding: 2rem 2.25rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 3rem;
+}
+
+.credentials-panel .section-title {
+  margin-bottom: 0.75rem;
+}
+
+.credentials-hint {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  max-width: 640px;
+}
+
+.credentials-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.credentials-note {
+  margin-top: 1.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .credentials-panel {
+    padding: 1.5rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .credentials-row {
+    gap: 1.25rem;
+  }
+}
+
 @media (max-width: 768px) {
   .student-profile-page {
     padding: 6rem 1rem 2rem;

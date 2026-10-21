@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import PinCard from '../components/PinCard';
-import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle } from 'lucide-react';
+import CredentialButton from '../components/CredentialButton';
+import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle, IdCard } from 'lucide-react';
+import { CREDENTIAL_CATALOG } from '../constants/credentials';
+import { isCredentialDelivered, getCredentialRecord, buildCredentialsMap } from '../utils/credentials';
+import { canUnlockPins } from '../utils/permissions';
 import vcmImg from '../assets/vcm.jpg';
 import representantesImg from '../assets/representantes.jpg';
 import internacionalImg from '../assets/internacional.jpg';
@@ -111,6 +116,10 @@ const StudentProfile = () => {
   const { studentsList, updateStudent } = useData();
   const student = studentsList.find(s => s.id === id);
 
+  // 3. Usuario de la sesión: determina si puede registrar entregas de credenciales
+  const { user } = useAuth();
+  const canDeliver = canUnlockPins(user);
+
   // Estados locales para el modal de desbloqueo de pines
   const [selectedPin, setSelectedPin] = useState(null);
   const [selectedActivities, setSelectedActivities] = useState([]);
@@ -179,6 +188,26 @@ const StudentProfile = () => {
     setIsUnlocking(false);
   };
 
+  // --------------------------------------------------------------------------
+  // PROCESO: Entrega de credenciales (lanyard / pasaporte)
+  // --------------------------------------------------------------------------
+  /**
+   * Registra la entrega de una credencial (lanyard o pasaporte).
+   *
+   * 📌 Se guarda en el documento del estudiante (`credentials`) junto con la
+   * fecha y el usuario que realizó la entrega, para que el check verde se
+   * mantenga en las próximas visitas al perfil.
+   */
+  const handleDeliverCredential = async (credentialId) => {
+    const credentials = buildCredentialsMap(
+      student,
+      credentialId,
+      user?.email || user?.name
+    );
+
+    await updateStudent(student.id, { credentials });
+  };
+
   return (
     <div className="student-profile-page container">
       {/* Enlace para regresar a la vista de Directorio */}
@@ -199,6 +228,40 @@ const StudentProfile = () => {
           </span>
           <p className="profile-bio">{student.bio}</p>
         </div>
+      </div>
+
+      {/* ===== CREDENCIALES INSTITUCIONALES: Lanyard y Pasaporte ===== */}
+      {/* Al marcar un botón, queda en verde con check y se mantiene así
+          en las próximas visitas porque se persiste en Firestore. */}
+      <div className="credentials-panel glass-panel animate-fade-in">
+        <div className="section-title">
+          <IdCard className="section-icon" />
+          <h2>Credenciales del Estudiante</h2>
+        </div>
+
+        <p className="credentials-hint">
+          Registra la entrega del <strong>lanyard</strong> y del <strong>pasaporte</strong>.
+          Al marcar un botón queda en verde con check y se mantiene en las próximas visitas.
+        </p>
+
+        <div className="credentials-row">
+          {CREDENTIAL_CATALOG.map(credential => (
+            <CredentialButton
+              key={credential.id}
+              credential={credential}
+              delivered={isCredentialDelivered(student, credential.id)}
+              deliveredAt={getCredentialRecord(student, credential.id)?.deliveredAt}
+              canDeliver={canDeliver}
+              onDeliver={handleDeliverCredential}
+            />
+          ))}
+        </div>
+
+        {!canDeliver && (
+          <p className="credentials-note">
+            Sólo el personal con permisos (admin, coordinador o director) puede registrar entregas.
+          </p>
+        )}
       </div>
 
       {/* COLECCIÓN DE PINES: Grid con las 12 insignias */}

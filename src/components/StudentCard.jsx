@@ -1,6 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Edit2 } from 'lucide-react';
+import CredentialButton from './CredentialButton';
+import { CREDENTIAL_CATALOG } from '../constants/credentials';
+import { isCredentialDelivered } from '../utils/credentials';
 import './StudentCard.css';
 
 /**
@@ -24,7 +27,7 @@ import './StudentCard.css';
  *    Su única responsabilidad es la presentación visual de los datos de un alumno.
  *    No sabe cómo se guardan los datos en Firebase ni cómo se descargan en Excel.
  */
-const StudentCard = ({ student, onEdit }) => {
+const StudentCard = ({ student, onEdit, onDeliverCredential }) => {
   // --------------------------------------------------------------------------
   // 1. CÁLCULO DE PINES DISPONIBLES NO OBTENIDOS
   // --------------------------------------------------------------------------
@@ -112,6 +115,27 @@ const StudentCard = ({ student, onEdit }) => {
             <span className="stat-label" style={{ color: 'var(--color-primary)', fontWeight: '600' }}>Disponibles</span>
           </div>
         )}
+      </div>
+
+      {/* ===== CREDENCIALES: Lanyard y Pasaporte =====
+          Botones circulares: al hacer clic registran la entrega, el botón
+          hace la animación de check y queda en verde de forma permanente
+          porque se persiste en Firestore. */}
+      <div className="student-credentials">
+        <span className="student-credentials-title">Credenciales</span>
+        <div className="credential-chips">
+          {CREDENTIAL_CATALOG.map(credential => (
+            <CredentialButton
+              key={credential.id}
+              credential={credential}
+              size="sm"
+              showLabel={false}
+              delivered={isCredentialDelivered(student, credential.id)}
+              canDeliver={typeof onDeliverCredential === 'function'}
+              onDeliver={(credentialId) => onDeliverCredential(student.id, credentialId)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Botón de acción: Enlace de React Router al perfil completo y mapa del recorrido */}
