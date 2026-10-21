@@ -5,6 +5,8 @@ import StudentCard from '../components/StudentCard';
 import EditStudentModal from '../components/modals/EditStudentModal';
 import CustomSelect from '../components/CustomSelect';
 import { Search, Grid, List, Award, ChevronLeft, ChevronRight, Loader2, WifiOff, Filter, RefreshCw } from 'lucide-react';
+import { isGlobalUser, canManageStudents } from '../utils/permissions';
+import { branchOptions as CANONICAL_BRANCH_OPTIONS } from '../constants/branches';
 import './Directory.css';
 
 /**
@@ -38,28 +40,10 @@ import './Directory.css';
  */
 
 // Opciones de sede para el selector de admins (con opción "Todas las Sedes")
+// 📌 Usa el catálogo canónico de constants/branches.js para evitar duplicidad.
 const BRANCH_OPTIONS = [
   { label: 'Todas las Sedes', options: ['Todas las Sedes'] },
-  {
-    label: 'Zona Norte',
-    options: ['Arica', 'Iquique', 'Antofagasta', 'Copiapó']
-  },
-  {
-    label: 'Zona Centro',
-    options: ['La Serena', 'Ovalle', 'Viña del Mar', 'Rancagua', 'Curicó', 'Talca']
-  },
-  {
-    label: 'Región Metropolitana',
-    options: ['UST Santiago (Av. Ejército Libertador)', 'Santiago Centro (Vergara)', 'San Joaquín', 'Puente Alto']
-  },
-  {
-    label: 'Zona Sur y Austral',
-    options: ['Chillán', 'Concepción', 'Los Ángeles', 'Temuco', 'Valdivia', 'Osorno', 'Puerto Montt', 'Punta Arenas']
-  },
-  {
-    label: 'Modalidad Virtual',
-    options: ['Sede Online']
-  }
+  ...CANONICAL_BRANCH_OPTIONS
 ];
 
 // Cuántos estudiantes mostrar por pantalla en la paginación local
@@ -104,9 +88,10 @@ const Directory = () => {
   const { user } = useAuth();
   const { fetchStudentsPaginated, updateStudent } = useData();
 
-  // El usuario admin puede ver y filtrar todas las sedes; los demás sólo ven la suya
-  const isGlobal = user?.role === 'admin';
-  const canEdit = user?.role === 'admin' || user?.role === 'coordinador';
+  // El usuario con alcance nacional (admin o coordinador) puede ver y filtrar
+  // todas las sedes; los demás sólo ven la suya.
+  const isGlobal = isGlobalUser(user);
+  const canEdit = canManageStudents(user);
 
   // Sede efectiva para la consulta paginada
   const effectiveBranch = isGlobal ? selectedBranch : (user?.branch || null);

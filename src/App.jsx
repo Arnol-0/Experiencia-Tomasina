@@ -6,6 +6,7 @@ import Directory from './pages/Directory';
 import StudentProfile from './pages/StudentProfile';
 import Login from './pages/Login';
 import ErrorBoundary from './components/ErrorBoundary';
+import CompleteStaffProfile from './components/CompleteStaffProfile';
 
 /**
  * ============================================================================
@@ -24,22 +25,32 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 // Componente de Orden Superior (HOC) para proteger rutas privadas
 const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, needsProfile } = useAuth();
   
   if (loading) {
     return <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>Cargando...</div>;
   }
   
-  return user ? children : <Navigate to="/login" />;
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  if (needsProfile) {
+    return <CompleteStaffProfile />;
+  }
+
+  return children;
 };
 
 
 function App() {
+  const { needsProfile } = useAuth();
+
   return (
     <ErrorBoundary>
       <Router>
         <div className="app-layout">
-          <Navbar />
+          {!needsProfile && <Navbar />}
           <main>
             <Routes>
               <Route path="/login" element={<Login />} />

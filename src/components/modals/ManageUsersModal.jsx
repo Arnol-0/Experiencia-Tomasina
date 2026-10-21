@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import BaseModal from './BaseModal';
-import { Settings, Edit2, Trash2, Check, X } from 'lucide-react';
+import { Settings, Edit2, Trash2, Check, X, Globe2 } from 'lucide-react';
 import CustomSelect from '../CustomSelect';
 import { userService } from '../../services/userService';
+import { NATIONAL_BRANCH } from '../../constants/branches';
+import { ROLES, resolveBranchForRole } from '../../utils/permissions';
 
 /**
  * ============================================================================
@@ -37,10 +39,22 @@ const ManageUsersModal = ({
    */
   const handleUpdateSystemUser = async (e, id) => {
     e.preventDefault();
+
+    // El coordinador es nacional: la sede se fuerza a 'Todas las Sedes'.
+    const isNationalRole = editSystemUserForm.role === ROLES.COORDINATOR;
+    const assignedBranch = resolveBranchForRole(editSystemUserForm.role, editSystemUserForm.branch);
+
+    if (!isNationalRole && editSystemUserForm.role !== ROLES.ADMIN && !assignedBranch) {
+      setMessage('Debes asignar una sede a este usuario.');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
     try {
-      await userService.updateSystemUser(id, editSystemUserForm);
+      const payload = { ...editSystemUserForm, branch: assignedBranch };
+      await userService.updateSystemUser(id, payload);
       // Actualización inmutable del estado
-      setStaffList(staffList.map(s => s.id === id ? { ...s, ...editSystemUserForm } : s));
+      setStaffList(staffList.map(s => s.id === id ? { ...s, ...payload } : s));
       setEditingSystemUserId(null);
       setMessage('Usuario actualizado correctamente.');
     } catch (err) {
@@ -90,7 +104,14 @@ const ManageUsersModal = ({
             {/* CONDICIONAL: Si este usuario específico está en modo de edición en línea (inline edit) */}
             {editingSystemUserId === staffUser.id ? (
               // FORMULARIO DE EDICIÓN EN LÍNEA
-              <form onSubmit={(e) => handleUpdateSystemUser(e, staffUser.id)} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr 1fr auto' }}>
+              <form
+                onSubmit={(e) => handleUpdateSystemUser(e, staffUser.id)}
+                style={{
+                  display: 'grid',
+                  gap: '1rem',
+                  gridTemplateColumns: editSystemUserForm.role === ROLES.COORDINATOR ? '1fr 1fr auto' : '1fr 1fr 1fr auto'
+                }}
+              >
                 {/* Campo para editar el nombre */}
                 <input 
                   type="text" 
@@ -104,16 +125,41 @@ const ManageUsersModal = ({
                 {/* Selector para cambiar el rol */}
                 <CustomSelect 
                   value={editSystemUserForm.role} 
-                  onChange={(val) => setEditSystemUserForm({...editSystemUserForm, role: val})} 
+                  onChange={(val) => setEditSystemUserForm({
+                    ...editSystemUserForm,
+                    role: val,
+                    // Al volver a coordinador se limpia la sede: su alcance es nacional.
+                    branch: val === ROLES.COORDINATOR ? NATIONAL_BRANCH : editSystemUserForm.branch
+                  })} 
                   options={roleOptions} 
                 />
 
-                {/* Selector para cambiar la sede */}
-                <CustomSelect 
-                  value={editSystemUserForm.branch} 
-                  onChange={(val) => setEditSystemUserForm({...editSystemUserForm, branch: val})} 
-                  options={branchOptions} 
-                />
+                {/* Selector de sede: el coordinador es nacional y no se le asigna sede */}
+                {editSystemUserForm.role === ROLES.COORDINATOR ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '0.25rem',
+                      background: 'var(--color-primary-light)',
+                      color: 'var(--color-primary-dark)',
+                      fontWeight: '600',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    <Globe2 size={16} />
+                    Todas las Sedes (Nacional)
+                  </div>
+                ) : (
+                  <CustomSelect 
+                    value={editSystemUserForm.branch} 
+                    onChange={(val) => setEditSystemUserForm({...editSystemUserForm, branch: val})} 
+                    options={branchOptions} 
+                  />
+                )}
 
                 {/* Botones de acción: Guardar (Check verde) o Cancelar (X roja) */}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>

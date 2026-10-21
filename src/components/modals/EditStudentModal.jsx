@@ -3,32 +3,8 @@ import BaseModal from './BaseModal';
 import { Edit2, Check, User, ArrowRight } from 'lucide-react';
 import CustomSelect from '../CustomSelect';
 import { validationService } from '../../services/validationService';
+import { branchOptions } from '../../constants/branches';
 
-
-const branchOptions = [
-  { value: 'Arica', label: 'Arica' },
-  { value: 'Iquique', label: 'Iquique' },
-  { value: 'Antofagasta', label: 'Antofagasta' },
-  { value: 'Copiapó', label: 'Copiapó' },
-  { value: 'La Serena', label: 'La Serena' },
-  { value: 'Ovalle', label: 'Ovalle' },
-  { value: 'Viña del Mar', label: 'Viña del Mar' },
-  { value: 'Santiago Centro', label: 'Santiago Centro' },
-  { value: 'San Joaquín', label: 'San Joaquín' },
-  { value: 'Estación Central', label: 'Estación Central' },
-  { value: 'Puente Alto', label: 'Puente Alto' },
-  { value: 'Rancagua', label: 'Rancagua' },
-  { value: 'Curicó', label: 'Curicó' },
-  { value: 'Talca', label: 'Talca' },
-  { value: 'Chillán', label: 'Chillán' },
-  { value: 'Concepción', label: 'Concepción' },
-  { value: 'Los Ángeles', label: 'Los Ángeles' },
-  { value: 'Temuco', label: 'Temuco' },
-  { value: 'Valdivia', label: 'Valdivia' },
-  { value: 'Osorno', label: 'Osorno' },
-  { value: 'Puerto Montt', label: 'Puerto Montt' },
-  { value: 'Punta Arenas', label: 'Punta Arenas' }
-];
 
 const instOptions = [
   { value: 'UST', label: 'Universidad Santo Tomás (UST)' },

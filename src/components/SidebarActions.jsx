@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2 } from 'lucide-react';
+import { ROLES } from '../utils/permissions';
 
 /**
  * ============================================================================
@@ -34,7 +35,7 @@ const SidebarActions = ({
   const [openAccordion, setOpenAccordion] = useState('estudiantes');
 
   // Control de acceso por rol: Asistentes DAE no tienen acceso a acciones administrativas
-  if (user?.role === 'asistente_dae') return null;
+  if (user?.role === ROLES.ASSISTANT) return null;
 
 
   return (

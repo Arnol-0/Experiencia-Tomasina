@@ -69,8 +69,8 @@ const Navbar = () => {
           <div className="user-info">
             <User size={18} className="user-icon" />
             <div className="user-details">
-              <span className="user-name">{user.name}</span>
-              <span className="user-branch">{user.branch}</span>
+              <span className="user-name">{user.name || user.email}</span>
+              <span className="user-branch">{user.branch || 'Sin sede'}</span>
             </div>
           </div>
 

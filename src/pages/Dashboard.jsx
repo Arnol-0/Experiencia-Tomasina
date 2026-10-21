@@ -1,66 +1,31 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { Users, Award, ShieldPlus, X, Trash2, UserPlus, Upload, Search, Download, Settings, Edit2, Check, ChevronDown } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { db, firebaseConfig } from '../firebase';
-import { initializeApp } from 'firebase/app';
+import { Users, Award, X, Trash2, UserPlus, Upload, Search } from 'lucide-react';
+import { db } from '../firebase';
 import { PINS_CATALOG } from './StudentProfile';
-import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc, collection, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import './Dashboard.css';
 import CustomSelect from '../components/CustomSelect';
 import SidebarActions from '../components/SidebarActions';
 import { excelService } from '../services/excelService';
 import { validationService } from '../services/validationService';
+import { branchOptions, ALL_BRANCHES } from '../constants/branches';
+import { ROLES, isGlobalUser, isNationalScopeBranch } from '../utils/permissions';
 import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
 
-const branchOptions = [
-  {
-    label: 'Zona Norte',
-    options: ['Arica', 'Iquique', 'Antofagasta', 'Copiapó']
-  },
-  {
-    label: 'Zona Centro',
-    options: ['La Serena', 'Ovalle', 'Viña del Mar', 'Rancagua', 'Curicó', 'Talca']
-  },
-  {
-    label: 'Región Metropolitana',
-    options: ['UST Santiago (Av. Ejército Libertador)', 'Santiago Centro (Vergara)', 'San Joaquín', 'Puente Alto']
-  },
-  {
-    label: 'Zona Sur y Austral',
-    options: ['Chillán', 'Concepción', 'Los Ángeles', 'Temuco', 'Valdivia', 'Osorno', 'Puerto Montt', 'Punta Arenas']
-  },
-  {
-    label: 'Modalidad Virtual',
-    options: ['Sede Online']
-  }
-];
-
 const roleOptions = [
-  { value: 'director_dae', label: 'Director DAE' },
-  { value: 'asistente_dae', label: 'Asistente DAE' },
-  { value: 'coordinador', label: 'Coordinador' }
-];
-
-const editRoleOptions = [
-  { value: 'director_dae', label: 'Director DAE' },
-  { value: 'asistente_dae', label: 'Asistente DAE' },
-  { value: 'coordinador', label: 'Coordinador' },
-  { value: 'admin', label: 'Admin' }
+  { value: ROLES.DIRECTOR, label: 'Director DAE' },
+  { value: ROLES.ASSISTANT, label: 'Asistente DAE' },
+  { value: ROLES.COORDINATOR, label: 'Coordinador (Nacional)' }
 ];
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { studentsList, addStudents, updateStudent, deleteStudent, deleteStudentsByBranch } = useData();
   
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newRole, setNewRole] = useState('asistente_dae');
   const [newBranch, setNewBranch] = useState('Arica');
   const [message, setMessage] = useState('');
   
@@ -82,7 +47,6 @@ const Dashboard = () => {
   const [newStudentInstType, setNewStudentInstType] = useState('UST');
 
   const [showSystemUsersModal, setShowSystemUsersModal] = useState(false);
-  const [openAccordion, setOpenAccordion] = useState('estudiantes');
 
   const fetchStaff = async () => {
     try {
@@ -98,44 +62,15 @@ const Dashboard = () => {
   };
 
   React.useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'coordinador') {
+    if (isGlobalUser(user)) {
       fetchStaff();
     }
-  }, [user?.role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role, user?.branch]);
 
-  const handleDeleteSystemUser = async (userId) => {
-    if (!window.confirm("¿Estás seguro de eliminar el perfil de este usuario? Perderá acceso al sistema.")) return;
-    try {
-      await deleteDoc(doc(db, 'users', userId));
-      setStaffList(prev => prev.filter(u => u.id !== userId));
-      setMessage("Usuario del sistema eliminado correctamente.");
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      console.error("Error al eliminar usuario:", error);
-      setMessage("Error al eliminar el usuario.");
-      setTimeout(() => setMessage(''), 3000);
-    }
-  };
-
-  const handleSaveSystemUser = async (userId) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), {
-        name: editSystemUserForm.name,
-        role: editSystemUserForm.role,
-        branch: editSystemUserForm.branch
-      });
-      setStaffList(prev => prev.map(u => u.id === userId ? { ...u, ...editSystemUserForm } : u));
-      setEditingSystemUserId(null);
-      setMessage("Usuario del sistema actualizado correctamente.");
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      console.error("Error al actualizar usuario:", error);
-      setMessage("Error al actualizar el usuario.");
-      setTimeout(() => setMessage(''), 3000);
-    }
-  };
-
-  const isGlobal = user?.role === 'admin' || user?.role === 'coordinador';
+  // Alcance del usuario: el coordinador es NACIONAL (ve todas las sedes),
+  // igual que el admin. Se resuelve con el helper centralizado de permisos.
+  const isGlobal = isGlobalUser(user);
   const displayBranch = isGlobal ? 'Todas las Sedes' : (user?.branch || 'Sin Sede');
   
   const relevantStudents = isGlobal 
@@ -149,14 +84,14 @@ const Dashboard = () => {
     const breakdown = {};
     
     staffList.forEach(staff => {
-      if (typeof staff.branch === 'string' && staff.branch.toLowerCase() !== 'todas' && staff.branch.toLowerCase() !== 'todas las sedes') {
+      if (typeof staff.branch === 'string' && !isNationalScopeBranch(staff.branch)) {
         breakdown[staff.branch] = 0;
       }
     });
 
     studentsList.forEach(student => {
       const branch = student.branch || 'Sin Sede Asignada';
-      if (branch.toLowerCase() !== 'todas' && branch.toLowerCase() !== 'todas las sedes') {
+      if (!isNationalScopeBranch(branch)) {
         breakdown[branch] = (breakdown[branch] || 0) + 1;
       }
     });
@@ -437,7 +372,7 @@ const Dashboard = () => {
       <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title" style={{ marginBottom: '0.25rem' }}>Panel de Control</h1>
-          <p className="page-subtitle" style={{ margin: 0 }}>Bienvenido, {user.name} ({displayBranch})</p>
+          <p className="page-subtitle" style={{ margin: 0 }}>Bienvenido, {user.name || user.email} ({displayBranch})</p>
         </div>
       </div>
 
@@ -562,7 +497,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {user.role !== 'asistente_dae' && (
+            {user?.role !== ROLES.ASSISTANT && (
               <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
                 <button 
                   onClick={handleDeleteBranchStudents}
@@ -611,16 +546,17 @@ const Dashboard = () => {
         </div>
       )}
 
-      {showCreateModal && user?.role === 'admin' && (
+      {showCreateModal && isGlobal && (
         <CreateUserModal 
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
+          onCreated={fetchStaff}
           roleOptions={roleOptions}
           branchOptions={branchOptions}
         />
       )}
 
-      {showSystemUsersModal && user?.role === 'admin' && (
+      {showSystemUsersModal && isGlobal && (
         <ManageUsersModal 
           isOpen={showSystemUsersModal}
           onClose={() => setShowSystemUsersModal(false)}
@@ -631,7 +567,7 @@ const Dashboard = () => {
         />
       )}
 
-      {showSearchEditStudentModal && (user?.role === 'admin' || user?.role === 'coordinador') && (
+      {showSearchEditStudentModal && isGlobal && (
         <SearchEditStudentModal 
           isOpen={showSearchEditStudentModal}
           onClose={() => setShowSearchEditStudentModal(false)}
@@ -639,7 +575,7 @@ const Dashboard = () => {
         />
       )}
 
-      {showAddStudentModal && user?.role !== 'asistente_dae' && (
+      {showAddStudentModal && user?.role !== ROLES.ASSISTANT && (
         <div className="dashboard-modal-overlay">
           <div className="dashboard-modal-content animate-fade-in" style={{ maxWidth: '500px' }}>
             <button className="dashboard-modal-close" onClick={() => setShowAddStudentModal(false)}>
@@ -676,10 +612,9 @@ const Dashboard = () => {
                 <div className="form-group">
                   <label>Sede</label>
                   <select value={newBranch} onChange={e=>setNewBranch(e.target.value)}>
-                    <option value="Arica">Arica</option>
-                    <option value="Iquique">Iquique</option>
-                    <option value="Santiago Centro (Vergara)">Santiago Centro (Vergara)</option>
-                    <option value="Viña del Mar">Viña del Mar</option>
+                    {ALL_BRANCHES.map(branch => (
+                      <option key={branch} value={branch}>{branch}</option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -689,7 +624,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {showDeleteStudentModal && user.role !== 'asistente_dae' && (
+      {showDeleteStudentModal && user?.role !== ROLES.ASSISTANT && (
         <div className="dashboard-modal-overlay">
           <div className="dashboard-modal-content animate-fade-in" style={{ maxWidth: '600px', padding: '2rem' }}>
             <button className="dashboard-modal-close" onClick={() => setShowDeleteStudentModal(false)}>
