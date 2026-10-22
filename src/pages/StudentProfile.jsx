@@ -3,10 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import PinCard from '../components/PinCard';
-import CredentialButton from '../components/CredentialButton';
 import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle, IdCard } from 'lucide-react';
 import { CREDENTIAL_CATALOG } from '../constants/credentials';
-import { isCredentialDelivered, getCredentialRecord, buildCredentialsMap } from '../utils/credentials';
+import { isCredentialDelivered, buildCredentialsMap } from '../utils/credentials';
 import { canUnlockPins } from '../utils/permissions';
 import vcmImg from '../assets/vcm.jpg';
 import representantesImg from '../assets/representantes.jpg';
@@ -195,13 +194,13 @@ const StudentProfile = () => {
    * Registra la entrega de una credencial (lanyard o pasaporte).
    *
    * 📌 Se guarda en el documento del estudiante (`credentials`) junto con la
-   * fecha y el usuario que realizó la entrega, para que el check verde se
-   * mantenga en las próximas visitas al perfil.
+   * fecha y el usuario que realizó la entrega, para que quede persistido
+   * igual que los pines ya obtenidos.
    */
-  const handleDeliverCredential = async (credentialId) => {
+  const handleDeliverCredential = async (credential) => {
     const credentials = buildCredentialsMap(
       student,
-      credentialId,
+      credential.id,
       user?.email || user?.name
     );
 
@@ -230,31 +229,43 @@ const StudentProfile = () => {
         </div>
       </div>
 
-      {/* ===== CREDENCIALES INSTITUCIONALES: Lanyard y Pasaporte ===== */}
-      {/* Al marcar un botón, queda en verde con check y se mantiene así
-          en las próximas visitas porque se persiste en Firestore. */}
+      {/* ===== CREDENCIALES INSTITUCIONALES: Lanyard y Pasaporte =====
+          Se integran al mismo estilo de los pines: usando PinCard con estados
+          disponible/obtenido y el candado brillante para activar el click. */}
       <div className="credentials-panel glass-panel animate-fade-in">
         <div className="section-title">
           <IdCard className="section-icon" />
-          <h2>Credenciales del Estudiante</h2>
+          <h2>Credenciales</h2>
         </div>
 
         <p className="credentials-hint">
-          Registra la entrega del <strong>lanyard</strong> y del <strong>pasaporte</strong>.
-          Al marcar un botón queda en verde con check y se mantiene en las próximas visitas.
+          Lanyard y pasaporte: aparecen con el candado brillante cuando están
+          listos para marcar. Al dar clic quedan entregados con el mismo estilo
+          que los pines obtenidos.
         </p>
 
-        <div className="credentials-row">
-          {CREDENTIAL_CATALOG.map(credential => (
-            <CredentialButton
-              key={credential.id}
-              credential={credential}
-              delivered={isCredentialDelivered(student, credential.id)}
-              deliveredAt={getCredentialRecord(student, credential.id)?.deliveredAt}
-              canDeliver={canDeliver}
-              onDeliver={handleDeliverCredential}
-            />
-          ))}
+        <div className="pins-grid">
+          {CREDENTIAL_CATALOG.map(credential => {
+            const delivered = isCredentialDelivered(student, credential.id);
+            const isClickable = canDeliver && !delivered;
+            const credentialPin = {
+              id: credential.id,
+              name: credential.label,
+              description: credential.description,
+              category: 'Credencial',
+              icon: credential.icon
+            };
+
+            return (
+              <PinCard
+                key={credential.id}
+                pin={credentialPin}
+                isCollected={delivered}
+                isAvailable={isClickable}
+                onClick={isClickable ? () => handleDeliverCredential(credential) : undefined}
+              />
+            );
+          })}
         </div>
 
         {!canDeliver && (
@@ -269,7 +280,7 @@ const StudentProfile = () => {
         <div className="pins-section animate-fade-in" style={{ animationDelay: '0.2s', width: '100%', margin: '0 auto' }}>
           <div className="section-title">
             <Award className="section-icon" />
-            <h2>Colección de Pines</h2>
+            <h2>Colección</h2>
           </div>
 
           <div className="pins-grid">
