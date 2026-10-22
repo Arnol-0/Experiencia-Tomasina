@@ -10,6 +10,7 @@ import CustomSelect from '../components/CustomSelect';
 import SidebarActions from '../components/SidebarActions';
 import { excelService } from '../services/excelService';
 import { validationService } from '../services/validationService';
+import pinImportService from '../services/pinImportService';
 import { branchOptions, ALL_BRANCHES } from '../constants/branches';
 import { ROLES, isGlobalUser, isNationalScopeBranch } from '../utils/permissions';
 import CreateUserModal from '../components/modals/CreateUserModal';
@@ -161,7 +162,12 @@ const Dashboard = () => {
   };
 
   /**
-   * 2. Ingesta y Asignación de Pines desde Excel con Validación
+   * 2. Ingesta y Asignación de Pines desde Excel (modo lista)
+   *
+   * 📌 Formato: una columna RUT y una columna con el NOMBRE del pin.
+   * El alumno puede repetir el RUT en varias filas (un pin por fila) o escribir
+   * varios pines en una misma celda separados por coma. La lógica de lectura y
+   * emparejamiento vive en `pinImportService` (SRP): aquí solo persistimos.
    */
   const handleImportPins = async (e) => {
     const file = e.target.files[0];
@@ -186,74 +192,44 @@ const Dashboard = () => {
         throw new Error("El archivo de pines está vacío o no contiene filas con datos.");
       }
 
-      // Verificación de existencia de columna RUT
-      const firstRow = data[0];
-      const hasRutCol = Object.keys(firstRow).some(k => 
-        ['rut', 'id', 'identificacion', 'cedula'].some(p => 
-          k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === p.toLowerCase()
-        )
+      // 📌 Validación temprana de columnas para dar un error claro al usuario.
+      const hasRutCol = Object.keys(data[0]).some((k) =>
+        pinImportService.RUT_COLUMN_ALIASES.includes(pinImportService.normalizeText(k))
       );
-
       if (!hasRutCol) {
         throw new Error("El archivo no contiene la columna obligatoria 'RUT' para asociar los pines a los alumnos.");
       }
 
-      let updateCount = 0;
-
-      for (const row of data) {
-        const getVal = (possibleNames) => {
-          const key = Object.keys(row).find(k => 
-            possibleNames.some(p => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === p.toLowerCase())
-          );
-          return key ? row[key] : undefined;
-        };
-
-        const rowRut = String(getVal(['rut', 'id', 'identificacion', 'cedula']) || '').trim();
-        if (!rowRut) continue;
-
-        const cleanRowRut = validationService.cleanRut(rowRut);
-
-        // Busca al estudiante por su RUT limpio
-        const existingStudent = studentsList.find(s => {
-          const dbRut = validationService.cleanRut(s.rut || s.id);
-          return dbRut === cleanRowRut;
-        });
-        
-        if (!existingStudent) continue; 
-
-        const newAvailablePins = [...(existingStudent.availablePins || [])];
-        let changed = false;
-
-        const pinesDisponiblesStr = getVal(['pines disponibles', 'pines activos', 'disponibles', 'pin', 'pines']);
-        if (pinesDisponiblesStr) {
-          const str = String(pinesDisponiblesStr).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          PINS_CATALOG.forEach(pin => {
-            const cleanName = pin.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if ((str.includes(cleanName) || str.includes(pin.id.toLowerCase())) && !newAvailablePins.includes(pin.id)) {
-              newAvailablePins.push(pin.id);
-              changed = true;
-            }
-          });
-        }
-        
-        PINS_CATALOG.forEach(pin => {
-          const val = getVal([pin.name, pin.id]);
-          if (val && String(val).trim().match(/^(si|sí|x|1|ok|true|yes)$/i)) {
-             if (!newAvailablePins.includes(pin.id)) {
-               newAvailablePins.push(pin.id);
-               changed = true;
-             }
-          }
-        });
-
-        if (changed) {
-          await updateStudent(existingStudent.id, { availablePins: newAvailablePins });
-          updateCount++;
-        }
+      const hasPinCol = Object.keys(data[0]).some((k) =>
+        pinImportService.PIN_COLUMN_ALIASES.includes(pinImportService.normalizeText(k))
+      );
+      if (!hasPinCol) {
+        throw new Error("El archivo no contiene la columna 'Pin' con el nombre del pin a asignar.");
       }
 
-      setMessage(`¡Proceso completado! Se actualizaron los pines de ${updateCount} estudiantes.`);
-      setTimeout(() => setMessage(''), 5000);
+      const plan = pinImportService.buildPinAssignments(data, studentsList, PINS_CATALOG);
+
+      for (const update of plan.updates) {
+        await updateStudent(update.studentId, { availablePins: update.availablePins });
+      }
+
+      // 📌 Mensaje con el detalle de lo aplicado y de lo que quedó fuera.
+      let msg = `¡Proceso completado! Se asignaron pines a ${plan.updates.length} estudiantes.`;
+      const totalPins = plan.updates.reduce((acc, u) => acc + u.addedPins.length, 0);
+      if (totalPins > 0) msg += ` (${totalPins} pines nuevos).`;
+      if (plan.rowsWithoutStudent > 0) {
+        msg += ` ${plan.rowsWithoutStudent} filas no coinciden con ningún estudiante.`;
+      }
+      if (plan.unknownPins.length > 0) {
+        const examples = [...new Set(plan.unknownPins)].slice(0, 3).join(', ');
+        msg += ` ${plan.unknownPins.length} filas tienen un pin no reconocido (ej: ${examples}).`;
+      }
+      if (plan.rowsWithoutRut > 0) {
+        msg += ` ${plan.rowsWithoutRut} filas no tienen RUT.`;
+      }
+
+      setMessage(msg);
+      setTimeout(() => setMessage(''), 8000);
     } catch (error) {
       console.error("Error importando pines:", error);
       setMessage(`Error al procesar archivo de pines: ${error.message}`);

@@ -27,7 +27,7 @@ export const TEMPLATES = [
   {
     id: 'pins',
     label: 'Plantilla de Pines',
-    description: 'Una columna por pin (12 pines disponibles)',
+    description: 'RUT + nombre del pin (una fila por pin)',
     fileName: 'Plantilla_Pines.xlsx',
     url: templateUrl('Plantilla_Pines.xlsx'),
   },
