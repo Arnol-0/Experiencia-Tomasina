@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import PinCard from '../components/PinCard';
-import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle, IdCard } from 'lucide-react';
+import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle } from 'lucide-react';
 import { CREDENTIAL_CATALOG } from '../constants/credentials';
 import { isCredentialDelivered, buildCredentialsMap } from '../utils/credentials';
 import { canUnlockPins } from '../utils/permissions';
@@ -191,11 +191,8 @@ const StudentProfile = () => {
   // PROCESO: Entrega de credenciales (lanyard / pasaporte)
   // --------------------------------------------------------------------------
   /**
-   * Registra la entrega de una credencial (lanyard o pasaporte).
-   *
-   * 📌 Se guarda en el documento del estudiante (`credentials`) junto con la
-   * fecha y el usuario que realizó la entrega, para que quede persistido
-   * igual que los pines ya obtenidos.
+   * Registra la entrega de Lanyard y Pasaporte con la misma animación visual
+   * que los pines (se marcan como entregados/obtenidos al hacer clic).
    */
   const handleDeliverCredential = async (credential) => {
     const credentials = buildCredentialsMap(
@@ -232,49 +229,6 @@ const StudentProfile = () => {
       {/* ===== CREDENCIALES INSTITUCIONALES: Lanyard y Pasaporte =====
           Se integran al mismo estilo de los pines: usando PinCard con estados
           disponible/obtenido y el candado brillante para activar el click. */}
-      <div className="credentials-panel glass-panel animate-fade-in">
-        <div className="section-title">
-          <IdCard className="section-icon" />
-          <h2>Credenciales</h2>
-        </div>
-
-        <p className="credentials-hint">
-          Lanyard y pasaporte: aparecen con el candado brillante cuando están
-          listos para marcar. Al dar clic quedan entregados con el mismo estilo
-          que los pines obtenidos.
-        </p>
-
-        <div className="pins-grid">
-          {CREDENTIAL_CATALOG.map(credential => {
-            const delivered = isCredentialDelivered(student, credential.id);
-            const isClickable = canDeliver && !delivered;
-            const credentialPin = {
-              id: credential.id,
-              name: credential.label,
-              description: credential.description,
-              category: 'Credencial',
-              icon: credential.icon
-            };
-
-            return (
-              <PinCard
-                key={credential.id}
-                pin={credentialPin}
-                isCollected={delivered}
-                isAvailable={isClickable}
-                onClick={isClickable ? () => handleDeliverCredential(credential) : undefined}
-              />
-            );
-          })}
-        </div>
-
-        {!canDeliver && (
-          <p className="credentials-note">
-            Sólo el personal con permisos (admin, coordinador o director) puede registrar entregas.
-          </p>
-        )}
-      </div>
-
       {/* COLECCIÓN DE PINES: Grid con las 12 insignias */}
       <div className="profile-content" style={{ display: 'block' }}>
         <div className="pins-section animate-fade-in" style={{ animationDelay: '0.2s', width: '100%', margin: '0 auto' }}>
@@ -284,6 +238,28 @@ const StudentProfile = () => {
           </div>
 
           <div className="pins-grid">
+            {CREDENTIAL_CATALOG.map(credential => {
+              const delivered = isCredentialDelivered(student, credential.id);
+              const isAvailable = canUnlockPins(user) && !delivered;
+              const credentialPin = {
+                id: credential.id,
+                name: credential.label,
+                description: credential.description,
+                category: 'Entrega',
+                icon: credential.icon
+              };
+
+              return (
+                <PinCard
+                  key={credential.id}
+                  pin={credentialPin}
+                  isCollected={delivered}
+                  isAvailable={isAvailable}
+                  onClick={isAvailable ? () => handleDeliverCredential(credential) : undefined}
+                />
+              );
+            })}
+
             {PINS_CATALOG.map(pin => (
               <PinCard
                 key={pin.id}
