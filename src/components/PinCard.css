@@ -104,3 +104,20 @@
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+/* ============================================================================
+   Animación de ENTREGA CONFIRMADA
+   ============================================================================
+   📌 Se aplica sólo al pin/credencial que el usuario acaba de desbloquear o de
+   recibir: un pulso verde con destello que confirma visualmente la acción.
+   No cambia el comportamiento de los pines ya obtenidos.
+   ========================================================================== */
+@keyframes delivered-pop {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+  45%  { transform: scale(1.03); box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); }
+  100% { transform: scale(1); box-shadow: 0 4px 10px rgba(76, 175, 80, 0.15); }
+}
+
+.pin-card.just-delivered {
+  animation: delivered-pop 0.9s ease-out;
+}

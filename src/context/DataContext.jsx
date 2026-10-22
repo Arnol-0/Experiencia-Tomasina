@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { db } from '../firebase';
+import { useAuth } from './AuthContext';
 import { 
   collection, 
   onSnapshot, 
@@ -41,8 +42,21 @@ const DataContext = createContext();
 export const DataProvider = ({ children }) => {
   const [studentsList, setStudentsList] = useState([]);
 
-  // Suscripción en tiempo real a la colección 'students' de Firestore (para Dashboard / compatibilidad)
+  // 📌 DIP + SRP: la capa de datos pregunta por la sesión a través de la
+  // abstracción `useAuth()` en lugar de conocer detalles de Firebase Auth.
+  const { user } = useAuth();
+  const userId = user?.uid || null;
+
+  // Suscripción en tiempo real a la colección 'students' de Firestore.
+  //
+  // 📌 ¿POR QUÉ DEPENDE DE LA SESIÓN?
+  // Si el listener se creara antes del login (usuario anónimo), Firestore lo
+  // rechazaría por reglas de seguridad y la app quedaría mostrando datos viejos
+  // de la caché: las escrituras se guardaban, pero la pantalla no se refrescaba.
+  // Al suscribirnos sólo con sesión activa, el tiempo real funciona siempre.
   useEffect(() => {
+    if (!userId) return undefined;
+
     const unsubscribe = onSnapshot(collection(db, 'students'), (snapshot) => {
       const students = [];
       snapshot.forEach((docSnap) => {
@@ -53,9 +67,13 @@ export const DataProvider = ({ children }) => {
       console.warn("Aviso en listener en tiempo real de Firestore (posible modo offline):", error);
     });
 
-    // Cleanup: cancela la suscripción cuando el componente se desmonta (evita fugas de memoria)
-    return () => unsubscribe();
-  }, []);
+    // Cleanup: al cerrar sesión (o cambiar de usuario) se cancela la suscripción
+    // y se vacía la lista para no dejar datos del usuario anterior en pantalla.
+    return () => {
+      unsubscribe();
+      setStudentsList([]);
+    };
+  }, [userId]);
 
   /**
    * ============================================================================

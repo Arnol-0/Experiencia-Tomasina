@@ -18,13 +18,13 @@ import './PinCard.css';
  * 
  * 1. ISP (Interface Segregation Principle - Segregación de Interfaces):
  *    Este componente solo solicita en sus props lo estrictamente necesario:
- *    `{ pin, isCollected, isAvailable, onClick }`. No se le obliga a recibir
+ *    `{ pin, isCollected, isAvailable, onClick, className }`. No se le obliga a recibir
  *    todo el objeto del estudiante ni métodos irrelevantes para su función.
  * 
  * 2. SRP (Single Responsibility Principle - Responsabilidad Única):
  *    Su única responsabilidad es renderizar visualmente el estado del pin.
  */
-const PinCard = ({ pin, isCollected, isAvailable, onClick }) => {
+const PinCard = ({ pin, isCollected, isAvailable, onClick, className = '' }) => {
   // 1. Selector dinámico del icono: Busca el icono en 'lucide-react' o usa un signo de pregunta por defecto
   const IconComponent = Icons[pin.icon] || Icons.HelpCircle;
 
@@ -33,8 +33,10 @@ const PinCard = ({ pin, isCollected, isAvailable, onClick }) => {
 
   return (
     <div 
-      // Clase CSS dinámica según el estado: 'collected', 'available' o 'locked'
-      className={`pin-card ${isCollected ? 'collected' : (isAvailable ? 'available' : 'locked')}`} 
+      // 📌 Clase CSS dinámica según el estado: 'collected', 'available' o 'locked'.
+      // `className` permite que quien lo use añada una animación puntual (por ejemplo
+      // el pulso verde al confirmar la entrega de una credencial) sin alterar los pines.
+      className={`pin-card ${isCollected ? 'collected' : (isAvailable ? 'available' : 'locked')} ${className}`.trim()} 
       // Si es clickeable asignamos la función onClick; si no, queda desactivado (undefined)
       onClick={isClickable ? onClick : undefined} 
       style={{ cursor: isClickable ? 'pointer' : 'default' }}

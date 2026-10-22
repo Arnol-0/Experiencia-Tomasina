@@ -124,6 +124,14 @@ const StudentProfile = () => {
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [isUnlocking, setIsUnlocking] = useState(false);
 
+  // 📌 ENTREGAS OPTIMISTAS DE CREDENCIALES:
+  // Guardamos localmente la entrega recién confirmada para que la tarjeta pase
+  // al estado "obtenido" (con su animación) en el mismo instante del clic, sin
+  // esperar el viaje de ida y vuelta a Firestore ni la actualización del listener.
+  const [pendingCredentials, setPendingCredentials] = useState({});
+  const [celebratingCredential, setCelebratingCredential] = useState(null);
+  const [credentialError, setCredentialError] = useState('');
+
   // Si el estudiante no existe o aún está cargando la base de datos
   if (!student) {
     return (
@@ -133,6 +141,16 @@ const StudentProfile = () => {
       </div>
     );
   }
+
+  // --------------------------------------------------------------------------
+  // VISTA COMBINADA DEL ESTUDIANTE
+  // --------------------------------------------------------------------------
+  // 📌 Mezcla lo que ya está guardado en Firestore con las entregas confirmadas
+  // en esta sesión, para que la tarjeta reaccione al clic inmediatamente.
+  const studentView = {
+    ...student,
+    credentials: { ...(student.credentials || {}), ...pendingCredentials }
+  };
 
   // --------------------------------------------------------------------------
   // INTERACCIÓN: Clic sobre un Pin
@@ -191,17 +209,44 @@ const StudentProfile = () => {
   // PROCESO: Entrega de credenciales (lanyard / pasaporte)
   // --------------------------------------------------------------------------
   /**
-   * Registra la entrega de Lanyard y Pasaporte con la misma animación visual
-   * que los pines (se marcan como entregados/obtenidos al hacer clic).
+   * Registra la entrega de Lanyard o Pasaporte.
+   *
+   * 📌 Flujo (UI optimista):
+   * 1. Se pinta la tarjeta como "obtenida" al instante → dispara la misma
+   *    animación de pulso verde que un pin recién desbloqueado.
+   * 2. Se persiste la entrega en Firestore (`students/{id}.credentials`).
+   * 3. Si la escritura falla, se revierte el estado visual y se muestra el
+   *    error, de modo que nunca quede una tarjeta "entregada" sin guardar.
    */
   const handleDeliverCredential = async (credential) => {
+    if (isCredentialDelivered(studentView, credential.id)) return;
+
     const credentials = buildCredentialsMap(
-      student,
+      studentView,
       credential.id,
       user?.email || user?.name
     );
 
-    await updateStudent(student.id, { credentials });
+    // 1. Feedback inmediato: estado "obtenido" + animación de entrega.
+    setCredentialError('');
+    setPendingCredentials(prev => ({ ...prev, [credential.id]: credentials[credential.id] }));
+    setCelebratingCredential(credential.id);
+    setTimeout(() => setCelebratingCredential(null), 1200);
+
+    // 2. Persistencia en Firestore.
+    try {
+      await updateStudent(student.id, { credentials });
+    } catch (error) {
+      // 3. Reversión: si no se guardó, la tarjeta vuelve a "disponible".
+      console.error('No se pudo registrar la entrega de la credencial:', error);
+      setPendingCredentials(prev => {
+        const next = { ...prev };
+        delete next[credential.id];
+        return next;
+      });
+      setCelebratingCredential(null);
+      setCredentialError('No se pudo registrar la entrega. Revisa tu conexión e inténtalo nuevamente.');
+    }
   };
 
   return (
@@ -226,10 +271,10 @@ const StudentProfile = () => {
         </div>
       </div>
 
-      {/* ===== CREDENCIALES INSTITUCIONALES: Lanyard y Pasaporte =====
-          Se integran al mismo estilo de los pines: usando PinCard con estados
-          disponible/obtenido y el candado brillante para activar el click. */}
-      {/* COLECCIÓN DE PINES: Grid con las 12 insignias */}
+      {/* ===== COLECCIÓN: Lanyard, Pasaporte y los 12 pines formativos =====
+          Las credenciales usan el mismo componente y estados que los pines:
+          candado brillante cuando están disponibles y animación de "obtenido"
+          al confirmar la entrega con un clic. */}
       <div className="profile-content" style={{ display: 'block' }}>
         <div className="pins-section animate-fade-in" style={{ animationDelay: '0.2s', width: '100%', margin: '0 auto' }}>
           <div className="section-title">
@@ -239,8 +284,8 @@ const StudentProfile = () => {
 
           <div className="pins-grid">
             {CREDENTIAL_CATALOG.map(credential => {
-              const delivered = isCredentialDelivered(student, credential.id);
-              const isAvailable = canUnlockPins(user) && !delivered;
+              const delivered = isCredentialDelivered(studentView, credential.id);
+              const isAvailable = canDeliver && !delivered;
               const credentialPin = {
                 id: credential.id,
                 name: credential.label,
@@ -256,6 +301,7 @@ const StudentProfile = () => {
                   isCollected={delivered}
                   isAvailable={isAvailable}
                   onClick={isAvailable ? () => handleDeliverCredential(credential) : undefined}
+                  className={celebratingCredential === credential.id ? 'just-delivered' : ''}
                 />
               );
             })}
@@ -271,6 +317,12 @@ const StudentProfile = () => {
               />
             ))}
           </div>
+
+          {/* Sólo aparece si Firestore rechazó la entrega: la tarjeta volvió a
+              su estado anterior y aquí se explica el motivo. */}
+          {credentialError && (
+            <p className="credential-error">{credentialError}</p>
+          )}
         </div>
       </div>
 
