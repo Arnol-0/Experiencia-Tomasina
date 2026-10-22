@@ -151,6 +151,39 @@
   font-size: 0.9rem;
 }
 
+/* 📌 Enlaces de descarga de plantillas: se comportan visualmente como botones */
+.template-download {
+  text-decoration: none;
+  align-items: flex-start;
+}
+
+.template-download > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  line-height: 1.25;
+}
+
+.template-download-hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+/* 📌 Enlace de descarga dentro del modal de importación */
+.modal-template-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.modal-template-link:hover {
+  text-decoration: underline;
+}
+
 .section-header h2 {
   font-size: 1.5rem;
   color: var(--color-primary-dark);

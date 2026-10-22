@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2 } from 'lucide-react';
+import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2, FileSpreadsheet } from 'lucide-react';
 import { ROLES } from '../utils/permissions';
+import TemplateDownloads from './TemplateDownloads';
 
 /**
  * ============================================================================
@@ -119,6 +120,25 @@ const SidebarActions = ({
                 <button className="btn-outline btn-outline-green" onClick={onManageUsers}>
                   <Users size={18} /> Gestionar Usuarios
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* 📌 Plantillas Excel: descarga directa de los archivos servidos desde public/plantillas */}
+          {isGlobal && (
+            <div className="accordion-item">
+              <button 
+                className={`accordion-header ${openAccordion === 'plantillas' ? 'active' : ''}`}
+                onClick={() => setOpenAccordion(openAccordion === 'plantillas' ? '' : 'plantillas')}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <FileSpreadsheet size={18} />
+                  <span>Plantillas Excel</span>
+                </div>
+                <ChevronDown size={18} className="accordion-icon" />
+              </button>
+              <div className={`accordion-content ${openAccordion === 'plantillas' ? 'open' : ''}`}>
+                <TemplateDownloads />
               </div>
             </div>
           )}

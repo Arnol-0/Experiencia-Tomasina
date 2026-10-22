@@ -15,6 +15,7 @@ import { ROLES, isGlobalUser, isNationalScopeBranch } from '../utils/permissions
 import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
+import { TEMPLATES } from '../constants/templates';
 
 const roleOptions = [
   { value: ROLES.DIRECTOR, label: 'Director DAE' },
@@ -538,6 +539,14 @@ const Dashboard = () => {
               <div className="form-group">
                 <label>Archivo Excel</label>
                 <input type="file" id="student-file-input" accept=".xlsx, .xls, .csv" required style={{ border: '1px solid var(--border-color)', padding: '0.5rem', borderRadius: '0.5rem', width: '100%' }} />
+                {/* 📌 Acceso rápido a la plantilla oficial sin salir del modal */}
+                <a
+                  href={TEMPLATES.find((t) => t.id === 'students')?.url}
+                  download="Plantilla_Estudiantes.xlsx"
+                  className="modal-template-link"
+                >
+                  ¿No tienes el formato? Descargar plantilla de estudiantes
+                </a>
               </div>
               
               <button type="submit" className="create-btn" style={{ marginTop: '1rem', width: '100%', justifyContent: 'center' }}>Procesar Archivo</button>
