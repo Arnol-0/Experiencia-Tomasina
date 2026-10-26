@@ -70,18 +70,19 @@ const EditStudentModal = ({ isOpen, onClose, student, onSave }) => {
     }
 
     // 2. VALIDACIÓN: RUT (si viene ingresado, debe ser matemáticamente válido)
+    const updatedData = { ...formData };
     if (formData.rut && formData.rut.trim()) {
       const rutValidation = validationService.validateRut(formData.rut);
       if (!rutValidation.isValid) {
         setMessage(`Error en RUT: ${rutValidation.error}`);
         return;
       }
-      formData.rut = rutValidation.formatted; // Normalizamos formato con puntos y guion
+      updatedData.rut = rutValidation.formatted; // Normalizamos formato con puntos y guion
     }
 
     setIsSaving(true);
     try {
-      await onSave(student.id, formData);
+      await onSave(student.id, updatedData);
       setMessage('Estudiante actualizado exitosamente.');
       setTimeout(() => {
         setMessage('');

@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { Users, Award, X, Trash2, UserPlus, Upload, Search } from 'lucide-react';
-import { db } from '../firebase';
-import { PINS_CATALOG } from './StudentProfile';
-import { collection, getDocs } from 'firebase/firestore';
+import { Users, Award, Search, X, Trash2, UserPlus, Upload } from 'lucide-react';
+import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './Dashboard.css';
 import CustomSelect from '../components/CustomSelect';
 import SidebarActions from '../components/SidebarActions';
@@ -200,11 +198,9 @@ const Dashboard = () => {
         throw new Error("El archivo no contiene la columna obligatoria 'RUT' para asociar los pines a los alumnos.");
       }
 
-      const hasPinCol = Object.keys(data[0]).some((k) =>
-        pinImportService.PIN_COLUMN_ALIASES.includes(pinImportService.normalizeText(k))
-      );
+      const hasPinCol = pinImportService.hasPinColumn(data[0]);
       if (!hasPinCol) {
-        throw new Error("El archivo no contiene la columna 'Pin' con el nombre del pin a asignar.");
+        throw new Error("El archivo no contiene columnas de pines válidas (ej: 'Pin 1', 'Pin 2' o 'Pin').");
       }
 
       const plan = pinImportService.buildPinAssignments(data, studentsList, PINS_CATALOG);
@@ -252,6 +248,21 @@ const Dashboard = () => {
     }
     excelService.exportToExcel(studentsToExport, `Estudiantes_${isGlobal ? 'Nacional' : user.branch}.xlsx`);
     setMessage('¡Descarga de Excel generada exitosamente!');
+    setTimeout(() => setMessage(''), 4000);
+  };
+
+  /**
+   * 3.1 Exportación de Matriz de Pines Tomados (Formato Horizontal)
+   */
+  const handleExportPins = () => {
+    const studentsToExport = isGlobal ? studentsList : studentsList.filter(s => s.branch === user.branch);
+    if (!studentsToExport || studentsToExport.length === 0) {
+      setMessage('No hay estudiantes disponibles para exportar pines.');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+    excelService.exportPinsToExcel(studentsToExport, `Pines_${isGlobal ? 'Nacional' : user.branch}.xlsx`);
+    setMessage('¡Descarga de Excel de pines generada exitosamente!');
     setTimeout(() => setMessage(''), 4000);
   };
 
@@ -387,6 +398,7 @@ const Dashboard = () => {
           onSearchEditStudent={() => setShowSearchEditStudentModal(true)}
           onImportStudents={() => setShowImportStudentsModal(true)}
           onExportExcel={handleExportExcel}
+          onExportPins={handleExportPins}
           onDeleteStudent={() => setShowDeleteStudentModal(true)}
           onImportPins={handleImportPins}
           onCreateUser={() => setShowCreateModal(true)}

@@ -2,7 +2,7 @@ import { validationService } from './validationService.js';
 
 /**
  * ============================================================================
- * SERVICIO: pinImportService (Importación de pines en modo lista)
+ * SERVICIO: pinImportService (Importación de pines horizontal y lista)
  * ============================================================================
  *
  * 📌 SRP (Single Responsibility Principle):
@@ -14,20 +14,20 @@ import { validationService } from './validationService.js';
  * El catálogo de pines se recibe por parámetro en lugar de importarse aquí,
  * de modo que el servicio no depende de una página de React.
  *
- * 📌 Formato esperado (modo lista):
- *   | RUT           | Pin                      |
- *   | 12.345.678-5  | Voluntariado             |
- *   | 12.345.678-5  | Bienestar                |
- *   | 9.876.543-3   | Liderazgo, Articulación  |
+ * 📌 Formatos soportados:
  *
- * - La columna del pin se reconoce por varios alias (ver PIN_COLUMN_ALIASES).
- * - El alumno solo escribe el NOMBRE del pin; no necesita marcar x/1/sí.
- * - Un mismo RUT puede repetirse en varias filas y una celda puede traer
- *   varios pines separados por coma, punto y coma, barra, guion o salto de línea.
- * - Se aceptan nombres parciales ("Liderazgo" → "Programa de Liderazgo").
+ * 1. Formato horizontal (Plantilla recomendada):
+ *    | RUT          | Pin 1        | Pin 2     | Pin 3                   |
+ *    | 12.345.678-5 | Voluntariado | Bienestar |                         |
+ *    | 9.876.543-3  | Semana 0     | Liderazgo | Articulación            |
+ *
+ * 2. Formato lista / vertical (Retrocompatible):
+ *    | RUT          | Pin                      |
+ *    | 12.345.678-5 | Voluntariado             |
+ *    | 12.345.678-5 | Bienestar                |
  */
 
-/** 📌 Alias aceptados para la columna que contiene el/los nombre(s) del pin. */
+/** 📌 Alias aceptados para columnas que contienen nombres de pines. */
 export const PIN_COLUMN_ALIASES = [
   'pin',
   'pines',
@@ -44,6 +44,33 @@ export const PIN_COLUMN_ALIASES = [
 /** 📌 Alias aceptados para la columna del RUT. */
 export const RUT_COLUMN_ALIASES = ['rut', 'id', 'identificacion', 'cedula'];
 
+/** 📌 Metadatos comunes de estudiantes para no confundir con pines. */
+export const NON_PIN_COLUMN_ALIASES = [
+  'rut',
+  'id',
+  'identificacion',
+  'cedula',
+  'nombre',
+  'alumno',
+  'estudiante',
+  'nombre completo',
+  'carrera',
+  'grado',
+  'programa',
+  'jornada',
+  'institucion',
+  'tipo institucion',
+  'sede',
+  'campus',
+  'email',
+  'correo',
+  'telefono',
+  'fecha',
+  'total pines obtenidos',
+  'pines obtenidos',
+  'total',
+];
+
 /** 📌 Largo mínimo de un texto para intentar una coincidencia parcial. */
 const MIN_PARTIAL_LENGTH = 3;
 
@@ -57,16 +84,33 @@ export const normalizeText = (value) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/** Determina si un encabezado de columna corresponde a un pin (ej: 'Pin 1', 'Pin 2', 'Pin', 'Pines', etc.). */
+export const isPinColumn = (colName) => {
+  if (!colName) return false;
+  const norm = normalizeText(colName);
+  if (NON_PIN_COLUMN_ALIASES.includes(norm)) return false;
+  if (norm.startsWith('pin')) return true;
+  if (PIN_COLUMN_ALIASES.includes(norm)) return true;
+  // Encabezados repetidos convertidos por SheetJS a __EMPTY, __EMPTY_1, etc.
+  if (/^__empty(_\d+)?$/i.test(String(colName).trim())) return true;
+  return false;
+};
+
+/** Verifica si una fila o conjunto de columnas contiene al menos una columna de pines. */
+export const hasPinColumn = (rowOrHeaders) => {
+  const keys = Array.isArray(rowOrHeaders) ? rowOrHeaders : Object.keys(rowOrHeaders || {});
+  return keys.some(isPinColumn);
+};
+
 /** Busca la clave real de la fila que coincida con alguno de los alias. */
-const findColumnKey = (row, aliases) => {
+export const findColumnKey = (row, aliases) => {
   const target = aliases.map(normalizeText);
   return Object.keys(row || {}).find((key) => target.includes(normalizeText(key)));
 };
 
 /**
  * Divide el contenido de una celda en tokens de búsqueda.
- * 📌 Se separa por comas, punto y coma, barras, pipes, saltos de línea y la
- * conjunción " y ", para permitir tanto una pin por fila como varios en una celda.
+ * Permite que una celda contenga un solo pin o múltiples separados por coma/barra.
  */
 export const splitPinTokens = (value) =>
   String(value ?? '')
@@ -76,8 +120,7 @@ export const splitPinTokens = (value) =>
 
 /**
  * Resuelve los ids de pin que menciona un texto.
- * 📌 Estrategia: primero coincidencia exacta por nombre o id; si no hay ninguna,
- * se aceptan coincidencias parciales (nombre completo dentro del token o al revés).
+ * Estrategia: coincidencia exacta por nombre o id; si no hay, coincidencias parciales.
  */
 export const matchPinIds = (value, catalog) => {
   const tokens = splitPinTokens(value);
@@ -97,8 +140,6 @@ export const matchPinIds = (value, catalog) => {
       }
 
       if (token.length < MIN_PARTIAL_LENGTH) return;
-      // 📌 Un token corto (3 letras, como "IVU") solo calza como palabra completa;
-      // así se evita que "pro" active cualquier pin que contenga "programa".
       const isWordMatch = pinName.split(/[^a-z0-9]+/).includes(token);
       if (isWordMatch || pinName.includes(token) || token.includes(pinName)) {
         if (token.length > 3 || isWordMatch) partialMatches.add(pin.id);
@@ -111,18 +152,7 @@ export const matchPinIds = (value, catalog) => {
 
 /**
  * Construye el plan de asignación de pines a partir de las filas del Excel.
- *
- * @param {Array<Object>} rows      Filas leídas de la primera hoja.
- * @param {Array<Object>} students  Estudiantes actuales (con id, rut, availablePins).
- * @param {Array<Object>} catalog   Catálogo de pines (id + name).
- * @returns {{
- *   updates: Array<{studentId: string, studentName: string, rut: string, availablePins: string[], addedPins: string[]}>,
- *   totalRows: number,
- *   rowsWithoutRut: number,
- *   rowsWithoutStudent: number,
- *   rowsWithoutPins: number,
- *   unknownPins: string[]
- * }}
+ * Soporta tanto el formato horizontal (Pin 1, Pin 2, ...) como el formato vertical.
  */
 export const buildPinAssignments = (rows, students, catalog) => {
   const result = {
@@ -136,7 +166,7 @@ export const buildPinAssignments = (rows, students, catalog) => {
 
   if (!Array.isArray(rows) || rows.length === 0) return result;
 
-  // 📌 Índice RUT limpio -> estudiante, para no recorrer 6000 registros por fila.
+  // 📌 Índice RUT limpio -> estudiante
   const studentsByRut = new Map();
   students.forEach((student) => {
     const rut = validationService.cleanRut(student.rut || student.id);
@@ -147,8 +177,6 @@ export const buildPinAssignments = (rows, students, catalog) => {
 
   rows.forEach((row) => {
     const rutKey = findColumnKey(row, RUT_COLUMN_ALIASES);
-    const pinKey = findColumnKey(row, PIN_COLUMN_ALIASES);
-
     const rawRut = String(row?.[rutKey] ?? '').trim();
     if (!rawRut) {
       result.rowsWithoutRut += 1;
@@ -162,13 +190,35 @@ export const buildPinAssignments = (rows, students, catalog) => {
       return;
     }
 
-    const matchedIds = matchPinIds(pinKey ? row[pinKey] : '', catalog);
+    // Buscamos todas las columnas de la fila que contienen pines
+    const matchedIds = [];
+    const unknownValuesInRow = [];
+
+    Object.entries(row).forEach(([colKey, cellValue]) => {
+      if (colKey === rutKey) return;
+      if (!isPinColumn(colKey)) return;
+
+      const rawVal = String(cellValue ?? '').trim();
+      if (!rawVal) return;
+
+      const ids = matchPinIds(rawVal, catalog);
+      if (ids.length > 0) {
+        matchedIds.push(...ids);
+      } else {
+        unknownValuesInRow.push(rawVal);
+      }
+    });
+
     if (!matchedIds.length) {
-      // 📌 Guardamos el texto para poder avisar qué nombres no se reconocieron.
-      const rawValue = String(pinKey ? row[pinKey] : '').trim();
-      if (rawValue) result.unknownPins.push(rawValue);
+      if (unknownValuesInRow.length > 0) {
+        result.unknownPins.push(...unknownValuesInRow);
+      }
       result.rowsWithoutPins += 1;
       return;
+    }
+
+    if (unknownValuesInRow.length > 0) {
+      result.unknownPins.push(...unknownValuesInRow);
     }
 
     const current = planned.get(student.id) || {
@@ -203,6 +253,10 @@ export const buildPinAssignments = (rows, students, catalog) => {
 export const pinImportService = {
   PIN_COLUMN_ALIASES,
   RUT_COLUMN_ALIASES,
+  NON_PIN_COLUMN_ALIASES,
+  isPinColumn,
+  hasPinColumn,
+  findColumnKey,
   normalizeText,
   splitPinTokens,
   matchPinIds,

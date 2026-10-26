@@ -25,7 +25,7 @@ class ErrorBoundary extends React.Component {
 
   // Se activa cuando un componente hijo lanza una excepción
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   // Registra el error para depuración

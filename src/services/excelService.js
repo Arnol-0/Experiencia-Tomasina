@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { PINS_CATALOG } from '../pages/StudentProfile'; // Reutiliza el catálogo oficial de pines
+import { PINS_CATALOG } from '../constants/pinsCatalog';
 import { validationService } from './validationService';
 
 /**
@@ -50,7 +50,8 @@ export const excelService = {
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws, { defval: "" }); // Convertimos filas a JSON sin perder celdas vacías
           resolve(data);
-        } catch (error) {
+        } catch (err) {
+          console.error("Error al procesar archivo Excel:", err);
           reject(new Error("No se pudo leer el archivo Excel. Asegúrate de que no esté corrupto ni protegido con contraseña."));
         }
       };
@@ -59,7 +60,6 @@ export const excelService = {
       reader.readAsBinaryString(file);
     });
   },
-
 
   /**
    * 2. Función auxiliar tolerante a variaciones en los nombres de columnas
@@ -77,35 +77,93 @@ export const excelService = {
 
   /**
    * 3. Exporta una lista de estudiantes y sus pines a un archivo descargable Excel (.xlsx)
+   * 📌 Formato horizontal: cada cuadro/celda contiene un pin individual a lo largo de la fila
+   * para evitar agrupar todos los nombres de pines dentro de un solo cuadro.
    * 
    * @param {Array} studentsList - Lista de estudiantes con sus atributos
    * @param {String} fileName - Nombre del archivo a descargar
    */
   exportToExcel: (studentsList, fileName = 'Estudiantes_TuViajeST.xlsx') => {
-    // Estructuramos las columnas amigables para el usuario final en Excel
-    const exportData = studentsList.map(student => ({
-      Rut: student.rut || (student.id && !student.id.startsWith('imported-') && !student.id.startsWith('manual-') ? student.id : ''),
-      Nombre: student.name || '',
-      Carrera: student.grade || '',
-      Jornada: student.jornada || '',
-      Institucion: student.institutionType || '',
-      Sede: student.branch || 'Sin Sede Asignada',
+    // Determinamos la cantidad máxima de pines obtenidos para dimensionar las columnas dinámicas
+    let maxCollected = 1;
+    studentsList.forEach(student => {
+      const count = (student.collectedPins || []).length;
+      if (count > maxCollected) maxCollected = count;
+    });
+
+    // Estructuramos las columnas amigables con formato horizontal
+    const exportData = studentsList.map(student => {
+      const row = {
+        Rut: student.rut || (student.id && !student.id.startsWith('imported-') && !student.id.startsWith('manual-') ? student.id : ''),
+        Nombre: student.name || '',
+        Carrera: student.grade || '',
+        Jornada: student.jornada || '',
+        Institucion: student.institutionType || '',
+        Sede: student.branch || 'Sin Sede Asignada',
+        'Total Pines Obtenidos': (student.collectedPins || []).length,
+      };
+
       // Traducimos los IDs de pines a sus nombres oficiales legibles
-      'Pines Disponibles': (student.availablePins || []).map(id => {
+      const collectedNames = (student.collectedPins || []).map(id => {
         const p = PINS_CATALOG.find(x => x.id === id);
         return p ? p.name : id;
-      }).join(', '),
-      'Pines Obtenidos': (student.collectedPins || []).map(id => {
-        const p = PINS_CATALOG.find(x => x.id === id);
-        return p ? p.name : id;
-      }).join(', ')
-    }));
+      });
+
+      // Fila a lo largo: cada cuadro dice cada pin que tomó el estudiante
+      for (let i = 0; i < maxCollected; i++) {
+        row[`Pin ${i + 1}`] = collectedNames[i] || '';
+      }
+
+      return row;
+    });
 
     // Creamos la hoja de cálculo y generamos la descarga automática
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Estudiantes");
+    XLSX.utils.book_append_sheet(wb, ws, "Estudiantes y Pines");
+    XLSX.writeFile(wb, fileName);
+  },
+
+  /**
+   * 4. Exporta únicamente la matriz de pines por RUT en formato horizontal:
+   * | RUT | Nombre | Sede | Pin 1 | Pin 2 | Pin 3 | ... |
+   * 
+   * @param {Array} studentsList - Lista de estudiantes
+   * @param {String} fileName - Nombre del archivo a descargar
+   */
+  exportPinsToExcel: (studentsList, fileName = 'Pines_Tomados_TuViajeST.xlsx') => {
+    let maxCollected = 1;
+    studentsList.forEach(student => {
+      const count = (student.collectedPins || []).length;
+      if (count > maxCollected) maxCollected = count;
+    });
+
+    const exportData = studentsList.map(student => {
+      const row = {
+        Rut: student.rut || (student.id && !student.id.startsWith('imported-') && !student.id.startsWith('manual-') ? student.id : ''),
+        Nombre: student.name || '',
+        Sede: student.branch || 'Sin Sede Asignada',
+        Carrera: student.grade || '',
+        'Total Tomados': (student.collectedPins || []).length,
+      };
+
+      const collectedNames = (student.collectedPins || []).map(id => {
+        const p = PINS_CATALOG.find(x => x.id === id);
+        return p ? p.name : id;
+      });
+
+      for (let i = 0; i < maxCollected; i++) {
+        row[`Pin ${i + 1}`] = collectedNames[i] || '';
+      }
+
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pines por RUT");
     XLSX.writeFile(wb, fileName);
   }
 };
 
+export default excelService;

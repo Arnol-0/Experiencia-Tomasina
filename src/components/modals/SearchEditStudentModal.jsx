@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import BaseModal from './BaseModal';
-import { Search, Edit2, Check, X, User, Loader2, ArrowRight } from 'lucide-react';
+import { Search, Edit2, Check, X, User, ArrowRight } from 'lucide-react';
 import CustomSelect from '../CustomSelect';
 import { useData } from '../../context/DataContext';
 import { validationService } from '../../services/validationService';
@@ -87,18 +87,19 @@ const SearchEditStudentModal = ({ isOpen, onClose, user }) => {
     }
 
     // Validación de RUT (si se ingresó)
+    const updatedData = { ...formData };
     if (formData.rut && formData.rut.trim()) {
       const rutVal = validationService.validateRut(formData.rut);
       if (!rutVal.isValid) {
         setMessage(`Error en RUT: ${rutVal.error}`);
         return;
       }
-      formData.rut = rutVal.formatted;
+      updatedData.rut = rutVal.formatted;
     }
 
     setIsSaving(true);
     try {
-      await updateStudent(editingStudent.id, formData);
+      await updateStudent(editingStudent.id, updatedData);
       setMessage('Estudiante actualizado exitosamente.');
       setTimeout(() => {
         setMessage('');

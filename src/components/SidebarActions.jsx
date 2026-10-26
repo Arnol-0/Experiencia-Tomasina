@@ -29,6 +29,7 @@ const SidebarActions = ({
   onExportExcel, 
   onDeleteStudent, 
   onImportPins, 
+  onExportPins,
   onCreateUser, 
   onManageUsers,
   onSearchEditStudent
@@ -97,6 +98,11 @@ const SidebarActions = ({
                   <Upload size={18} /> Importar Pines
                   <input type="file" accept=".xlsx, .xls, .csv" onChange={onImportPins} style={{ display: 'none' }} />
                 </label>
+                {onExportPins && (
+                  <button className="btn-outline btn-outline-green" onClick={onExportPins}>
+                    <Download size={18} /> Exportar Pines (Horizontal)
+                  </button>
+                )}
               </div>
             </div>
           )}
