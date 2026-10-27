@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import StudentCard from '../components/StudentCard';
 import EditStudentModal from '../components/modals/EditStudentModal';
 import CustomSelect from '../components/CustomSelect';
-import { Search, Grid, List, Award, ChevronLeft, ChevronRight, Loader2, WifiOff, Filter, RefreshCw } from 'lucide-react';
+import { Search, Grid, List, Award, ChevronLeft, ChevronRight, WifiOff, Filter } from 'lucide-react';
 import { isGlobalUser, canManageStudents } from '../utils/permissions';
 import { buildCredentialsMap } from '../utils/credentials';
 import { branchOptions as CANONICAL_BRANCH_OPTIONS } from '../constants/branches';
@@ -12,36 +12,19 @@ import './Directory.css';
 
 /**
  * ============================================================================
- * PÁGINA: Directory (Directorio de Estudiantes — Paginación Optimizada)
+ * PÁGINA: Directory (Directorio de Estudiantes — Tiempo Real y Carga Ultrarrápida)
  * ============================================================================
  *
  * 📌 ¿QUÉ HACE ESTA PÁGINA?
- * - Muestra el directorio de estudiantes con carga LAZY (bloques de 20).
- * - Permite filtrar por sede (menú desplegable para admins).
- * - Permite buscar por Nombre, Carrera o RUT en tiempo real sobre los ya cargados.
- * - Detecta modo offline y avisa visualmente al usuario.
- * - Permite paginar localmente entre los resultados ya cargados (10 por pantalla).
- * - Muestra alerta si Firestore requiere crear un índice compuesto.
- * - Permite editar a administradores y coordinadores.
- *
- * 📌 PRINCIPIOS SOLID APLICADOS:
- *
- * 1. DIP (Inversión de Dependencias):
- *    No importa ni usa firebase/firestore directamente.
- *    Llama a `fetchStudentsPaginated()` del contexto, que centraliza Firestore.
- *
- * 2. ISP (Segregación de Interfaces):
- *    Pasa a <StudentCard> solo los datos que necesita: student y onEdit.
- *
- * 3. OCP (Abierto/Cerrado):
- *    El filtro de sede, búsqueda y vista se pueden extender sin tocar la lógica base.
- *
- * 4. SRP (Responsabilidad Única):
- *    Esta página solo gestiona UX del directorio. Los datos vienen del contexto.
+ * - Muestra el directorio completo de estudiantes sincronizado en TIEMPO REAL.
+ * - Carga instantáneamente todos los estudiantes existentes sin límites artificiales (eliminado el bloqueo de 10.000).
+ * - Permite filtrar por sede (para administradores y coordinadores) o ver su sede local asignada.
+ * - Permite buscar por Nombre, Carrera, RUT o ID en tiempo real sin recargar.
+ * - Incluye paginación ágil de 10 por pantalla para una navegación fluida.
+ * - Detecta el estado de conexión (offline/online).
  */
 
 // Opciones de sede para el selector de admins (con opción "Todas las Sedes")
-// 📌 Usa el catálogo canónico de constants/branches.js para evitar duplicidad.
 const BRANCH_OPTIONS = [
   { label: 'Todas las Sedes', options: ['Todas las Sedes'] },
   ...CANONICAL_BRANCH_OPTIONS
@@ -49,9 +32,6 @@ const BRANCH_OPTIONS = [
 
 // Cuántos estudiantes mostrar por pantalla en la paginación local
 const ITEMS_PER_PAGE = 10;
-
-// Cuántos estudiantes traer de Firestore en cada bloque (lazy loading)
-const BLOCK_SIZE = 10000;
 
 const Directory = () => {
   // -------------------------------------------------------------------------
@@ -63,38 +43,22 @@ const Directory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingStudent, setEditingStudent] = useState(null);
 
-  // Lista acumulada de todos los estudiantes cargados desde Firestore (por bloques)
-  const [loadedStudents, setLoadedStudents] = useState([]);
-
-  // Referencia al último documento de Firestore para usar como cursor en startAfter()
-  const lastDocRef = useRef(null);
-
-  // Estados de control de carga
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-
-  // Sede seleccionada para filtrar (sólo admins pueden cambiarla)
+  // Sede seleccionada para filtrar (solo admins y coordinadores pueden cambiarla)
   const [selectedBranch, setSelectedBranch] = useState('Todas las Sedes');
-
-  // Indica si Firestore necesita que se cree un índice compuesto
-  const [indexRequiredUrl, setIndexRequiredUrl] = useState(null);
 
   // Estado de conexión a Internet
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // -------------------------------------------------------------------------
-  // CONTEXTO Y AUTENTICACIÓN (DIP — Inversión de Dependencias)
+  // CONTEXTO Y AUTENTICACIÓN (Sincronización en Tiempo Real vía DataContext)
   // -------------------------------------------------------------------------
   const { user } = useAuth();
-  const { fetchStudentsPaginated, updateStudent } = useData();
+  const { studentsList, updateStudent } = useData();
 
-  // El usuario con alcance nacional (admin o coordinador) puede ver y filtrar
-  // todas las sedes; los demás sólo ven la suya.
   const isGlobal = isGlobalUser(user);
   const canEdit = canManageStudents(user);
 
-  // Sede efectiva para la consulta paginada
+  // Sede efectiva para el filtrado
   const effectiveBranch = isGlobal ? selectedBranch : (user?.branch || null);
 
   // -------------------------------------------------------------------------
@@ -112,119 +76,51 @@ const Directory = () => {
   }, []);
 
   // -------------------------------------------------------------------------
-  // FUNCIÓN: Cargar un bloque de estudiantes de Firestore
+  // RESET DE PÁGINA AL CAMBIAR FILTROS O BÚSQUEDA
   // -------------------------------------------------------------------------
-  /**
-   * Carga el siguiente bloque de BLOCK_SIZE (20000) estudiantes desde Firestore.
-   * Usa el cursor `lastDocRef.current` para continuar desde donde quedó.
-   * Si el filtro de sede cambia, resetea la lista antes de consultar.
-   *
-   * @param {boolean} reset - Si true, borra los estudiantes ya cargados y empieza desde el inicio.
-   */
-  const loadNextBlock = useCallback(async (reset = false) => {
-    if (isLoading) return;
-    setIsLoading(true);
-    setLoadError(null);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, showOnlyAvailablePins, selectedBranch]);
 
-    // La sede que se usa depende del rol del usuario
-    const branchFilter = effectiveBranch === 'Todas las Sedes' ? null : effectiveBranch;
+  // -------------------------------------------------------------------------
+  // FILTRADO EN TIEMPO REAL SOBRE TODOS LOS ESTUDIANTES EXISTENTES
+  // -------------------------------------------------------------------------
+  const baseStudents = useMemo(() => {
+    if (!effectiveBranch || effectiveBranch === 'Todas las Sedes') {
+      return studentsList;
+    }
+    return studentsList.filter(s => s.branch === effectiveBranch);
+  }, [studentsList, effectiveBranch]);
 
-    try {
-      const result = await fetchStudentsPaginated({
-        branch: branchFilter,
-        pageSize: BLOCK_SIZE,
-        lastDoc: reset ? null : lastDocRef.current,
-        orderByField: 'name',
-        orderDirection: 'asc'
-      });
-
-      // Acumula los nuevos estudiantes (sin duplicados por ID)
-      setLoadedStudents(prev => {
-        const base = reset ? [] : prev;
-        const existingIds = new Set(base.map(s => s.id));
-        const fresh = result.students.filter(s => !existingIds.has(s.id));
-        return [...base, ...fresh];
-      });
-
-      // Avanza el cursor para la próxima carga
-      lastDocRef.current = result.lastVisibleDoc;
-      setHasMore(result.hasMore);
-
-      // Si Firestore detectó que falta un índice compuesto, lo avisamos
-      if (result.indexRequiredUrl) {
-        setIndexRequiredUrl(result.indexRequiredUrl);
+  const filteredStudents = useMemo(() => {
+    return baseStudents.filter(student => {
+      // Filtro 1: solo alumnos con pines disponibles sin recolectar
+      if (showOnlyAvailablePins) {
+        const pendientes = (student.availablePins || []).filter(
+          pinId => !(student.collectedPins || []).includes(pinId)
+        );
+        if (pendientes.length === 0) return false;
       }
-    } catch (err) {
-      console.error("Error cargando bloque de estudiantes:", err);
-      setLoadError("No se pudo cargar la lista. Verifica tu conexión o intenta de nuevo.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchStudentsPaginated, effectiveBranch, isLoading]);
 
-  // -------------------------------------------------------------------------
-  // EFECTO: Carga inicial y cuando cambia la sede seleccionada
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    // Resetea el cursor y la lista acumulada al cambiar la sede o al montar
-    lastDocRef.current = null;
-    setLoadedStudents([]);
-    setHasMore(true);
-    setCurrentPage(1);
-    setIndexRequiredUrl(null);
-
-    // Carga el primer bloque
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    loadNextBlock(true);
-    // Queremos que se recargue cuando cambie la sede efectiva o cuando el user se establezca
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBranch, user?.uid]);
-
-  // -------------------------------------------------------------------------
-  // EFECTO: Resetear página cuando cambia la búsqueda
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, showOnlyAvailablePins]);
-
-  // -------------------------------------------------------------------------
-  // FILTRADO LOCAL sobre los estudiantes ya cargados
-  // -------------------------------------------------------------------------
-  /**
-   * Aplica dos filtros en memoria sobre `loadedStudents`:
-   * 1. Solo pines pendientes (si el toggle está activo).
-   * 2. Coincidencia de búsqueda por Nombre, Carrera, RUT o ID.
-   */
-  const filteredStudents = loadedStudents.filter(student => {
-    // Filtro 1: solo alumnos con pines disponibles sin recolectar
-    if (showOnlyAvailablePins) {
-      const pendientes = (student.availablePins || []).filter(
-        pinId => !(student.collectedPins || []).includes(pinId)
+      // Filtro 2: búsqueda por texto (Nombre, Carrera, RUT o ID)
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        (student.name && student.name.toLowerCase().includes(term)) ||
+        (student.grade && student.grade.toLowerCase().includes(term)) ||
+        (student.rut && student.rut.toLowerCase().includes(term)) ||
+        (student.id && student.id.toLowerCase().includes(term))
       );
-      if (pendientes.length === 0) return false;
-    }
-
-    // Filtro 2: búsqueda por texto
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      (student.name && student.name.toLowerCase().includes(term)) ||
-      (student.grade && student.grade.toLowerCase().includes(term)) ||
-      (student.rut && student.rut.toLowerCase().includes(term)) ||
-      student.id.toLowerCase().includes(term)
-    );
-  });
+    });
+  }, [baseStudents, showOnlyAvailablePins, searchTerm]);
 
   // -------------------------------------------------------------------------
-  // PAGINACIÓN LOCAL (10 por pantalla sobre los resultados filtrados)
+  // PAGINACIÓN LOCAL (10 por pantalla)
   // -------------------------------------------------------------------------
   const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const currentStudents = filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  /**
-   * Calcula los botones de número de página a mostrar (ventana de 5 botones)
-   */
   const getVisiblePages = () => {
     let start = Math.max(1, currentPage - 2);
     let end = Math.min(totalPages, start + 4);
@@ -234,12 +130,8 @@ const Directory = () => {
     return pages;
   };
 
-  // -------------------------------------------------------------------------
-  // SUBCOMPONENTE: Controles de paginación local
-  // -------------------------------------------------------------------------
-  const PaginationControls = () => (
+  const renderPaginationControls = () => (
     <div className="pagination-controls">
-      {/* Botón: Página Anterior */}
       <button
         className="page-btn nav-btn"
         disabled={currentPage === 1}
@@ -248,7 +140,6 @@ const Directory = () => {
         <ChevronLeft size={18} /> Anterior
       </button>
 
-      {/* Botones numéricos */}
       <div className="page-numbers">
         {getVisiblePages().map(num => (
           <button
@@ -261,7 +152,6 @@ const Directory = () => {
         ))}
       </div>
 
-      {/* Botón: Página Siguiente */}
       <button
         className="page-btn nav-btn"
         disabled={currentPage === totalPages}
@@ -273,18 +163,10 @@ const Directory = () => {
   );
 
   // -------------------------------------------------------------------------
-  // FUNCIÓN: Registrar entrega de credencial (lanyard / pasaporte)
+  // REGISTRAR ENTREGA DE CREDENCIAL EN TIEMPO REAL (Lanyard / Pasaporte)
   // -------------------------------------------------------------------------
-  /**
-   * Marca una credencial como entregada desde la tarjeta del directorio.
-   *
-   * 📌 Persiste en Firestore (`students/{id}.credentials`) y además actualiza
-   * la lista local paginada, porque esa lista NO viene del listener en tiempo
-   * real de DataContext (se carga por bloques), así que sin este parche el
-   * check no se vería hasta recargar la página.
-   */
   const handleDeliverCredential = async (studentId, credentialId) => {
-    const target = loadedStudents.find(s => s.id === studentId);
+    const target = studentsList.find(s => s.id === studentId);
     if (!target) return;
 
     const credentials = buildCredentialsMap(
@@ -293,13 +175,8 @@ const Directory = () => {
       user?.email || user?.name
     );
 
-    // 1. Persistimos en Firestore
+    // Al guardar en Firestore, el listener onSnapshot actualiza studentsList de inmediato
     await updateStudent(studentId, { credentials });
-
-    // 2. Reflejamos el cambio de inmediato en la lista local
-    setLoadedStudents(prev =>
-      prev.map(s => (s.id === studentId ? { ...s, credentials } : s))
-    );
   };
 
   // -------------------------------------------------------------------------
@@ -313,22 +190,11 @@ const Directory = () => {
         <h1 className="page-title">Directorio de Estudiantes</h1>
         <p className="page-subtitle">Conoce a nuestros estudiantes y sigue su viaje.</p>
 
-        {/* Indicador de modo Offline: aparece cuando no hay conexión a Internet */}
+        {/* Indicador de modo Offline */}
         {!isOnline && (
           <div className="offline-banner">
             <WifiOff size={16} />
             <span>Modo sin conexión — viendo datos en caché local</span>
-          </div>
-        )}
-
-        {/* Aviso de índice compuesto requerido en Firestore */}
-        {indexRequiredUrl && (
-          <div className="index-warning-banner">
-            <span>
-              ⚠️ Firestore requiere un <strong>índice compuesto</strong> para filtrar por sede y ordenar por nombre.
-              {' '}<a href={indexRequiredUrl} target="_blank" rel="noopener noreferrer">Créalo aquí con un clic</a>.
-              {' '}Mientras tanto, el ordenamiento se aplica localmente.
-            </span>
           </div>
         )}
 
@@ -348,15 +214,13 @@ const Directory = () => {
             />
           </div>
 
-          {/* Selector de sede — sólo visible para admin */}
+          {/* Selector de sede — sólo visible para admin y coordinador */}
           {isGlobal && (
             <div className="branch-filter-wrap">
               <Filter size={16} className="branch-filter-icon" />
               <CustomSelect
                 value={selectedBranch}
-                onChange={val => {
-                  setSelectedBranch(val);
-                }}
+                onChange={val => setSelectedBranch(val)}
                 options={BRANCH_OPTIONS}
                 placeholder="Filtrar por sede..."
               />
@@ -397,30 +261,19 @@ const Directory = () => {
         </div>
       </div>
 
-      {/* ===== RESUMEN DE CARGA ===== */}
-      {/* ===== RESUMEN DE CARGA ===== */}
+      {/* ===== RESUMEN DE CARGA EN TIEMPO REAL ===== */}
       <div className="directory-summary">
         <span className="summary-count">
           {filteredStudents.length > 0
-            ? `Mostrando ${Math.min(startIndex + ITEMS_PER_PAGE, filteredStudents.length)} de ${filteredStudents.length} resultado(s) — ${loadedStudents.length} cargado(s) en total`
-            : isLoading
-              ? 'Cargando estudiantes...'
+            ? `Mostrando ${Math.min(startIndex + ITEMS_PER_PAGE, filteredStudents.length)} de ${filteredStudents.length} resultado(s) — ${baseStudents.length} estudiante(s) en total`
+            : studentsList.length === 0
+              ? 'Conectando y cargando estudiantes en tiempo real...'
               : 'No hay resultados'}
         </span>
       </div>
 
-      {/* ===== AVISO DE ERROR ===== */}
-      {loadError && (
-        <div className="load-error-banner">
-          <span>{loadError}</span>
-          <button className="retry-btn" onClick={() => loadNextBlock(false)}>
-            <RefreshCw size={14} /> Reintentar
-          </button>
-        </div>
-      )}
-
       {/* ===== PAGINACIÓN SUPERIOR ===== */}
-      {filteredStudents.length > 0 && <PaginationControls />}
+      {filteredStudents.length > 0 && renderPaginationControls()}
 
       {/* ===== GRILLA / LISTA DE TARJETAS DE ESTUDIANTE ===== */}
       <div className={viewMode === 'grid' ? 'students-grid' : 'students-list'}>
@@ -433,7 +286,7 @@ const Directory = () => {
               onDeliverCredential={canEdit ? handleDeliverCredential : undefined}
             />
           ))
-        ) : !isLoading ? (
+        ) : (
           <div className="no-results">
             <p>
               {searchTerm
@@ -441,26 +294,11 @@ const Directory = () => {
                 : 'No hay estudiantes registrados en esta sede todavía.'}
             </p>
           </div>
-        ) : null}
+        )}
       </div>
 
-      {/* ===== SPINNER DE CARGA ===== */}
-      {isLoading && (
-        <div className="loading-block">
-          <Loader2 size={28} className="spinning-icon" />
-          <span>Cargando estudiantes...</span>
-        </div>
-      )}
-
       {/* ===== PAGINACIÓN INFERIOR ===== */}
-      {filteredStudents.length > 0 && !isLoading && <PaginationControls />}
-
-      {/* Mensaje final cuando ya no hay más registros que cargar */}
-      {!hasMore && loadedStudents.length > 0 && !isLoading && (
-        <div className="all-loaded-msg">
-          ✓ Todos los estudiantes han sido cargados ({loadedStudents.length} en total).
-        </div>
-      )}
+      {filteredStudents.length > 0 && renderPaginationControls()}
 
       {/* ===== MODAL DE EDICIÓN ===== */}
       <EditStudentModal

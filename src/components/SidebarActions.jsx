@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2, FileSpreadsheet } from 'lucide-react';
+import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2, FileSpreadsheet, Zap } from 'lucide-react';
 import { ROLES } from '../utils/permissions';
 import TemplateDownloads from './TemplateDownloads';
 
@@ -30,6 +30,7 @@ const SidebarActions = ({
   onDeleteStudent, 
   onImportPins, 
   onExportPins,
+  onOpenAutoFill,
   onCreateUser, 
   onManageUsers,
   onSearchEditStudent
@@ -94,8 +95,21 @@ const SidebarActions = ({
                 <ChevronDown size={18} className="accordion-icon" />
               </button>
               <div className={`accordion-content ${openAccordion === 'pines' ? 'open' : ''}`}>
+                {onOpenAutoFill && (
+                  <button 
+                    className="btn-outline btn-outline-green" 
+                    onClick={onOpenAutoFill}
+                    style={{ 
+                      borderColor: 'var(--color-primary)', 
+                      background: 'rgba(5, 150, 105, 0.08)', 
+                      fontWeight: '600' 
+                    }}
+                  >
+                    <Zap size={18} color="var(--color-primary)" /> Llenado Automático
+                  </button>
+                )}
                 <label className="btn-outline btn-outline-green" style={{ cursor: 'pointer' }}>
-                  <Upload size={18} /> Importar Pines
+                  <Upload size={18} /> Importación Rápida
                   <input type="file" accept=".xlsx, .xls, .csv" onChange={onImportPins} style={{ display: 'none' }} />
                 </label>
                 {onExportPins && (

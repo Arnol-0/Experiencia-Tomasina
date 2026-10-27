@@ -1,0 +1,209 @@
+.autofill-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  color: var(--text-color, #1f2937);
+}
+
+.autofill-intro {
+  font-size: 0.925rem;
+  color: var(--text-muted, #64748b);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.autofill-dropzone {
+  border: 2px dashed var(--color-primary, #059669);
+  background: rgba(5, 150, 105, 0.04);
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.autofill-dropzone:hover {
+  background: rgba(5, 150, 105, 0.08);
+  border-color: var(--color-primary-dark, #047857);
+}
+
+.autofill-dropzone.has-file {
+  background: rgba(5, 150, 105, 0.1);
+  border-style: solid;
+}
+
+.autofill-dropzone-icon {
+  color: var(--color-primary, #059669);
+  margin-bottom: 0.25rem;
+}
+
+.autofill-dropzone-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-color, #1f2937);
+}
+
+.autofill-dropzone-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+}
+
+.autofill-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.autofill-options-card {
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.autofill-options-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary, #059669);
+  margin-bottom: 0.25rem;
+}
+
+.autofill-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--text-color, #1f2937);
+  user-select: none;
+}
+
+.autofill-checkbox-label input[type="checkbox"] {
+  accent-color: var(--color-primary, #059669);
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+}
+
+.autofill-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.autofill-metric-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 0.85rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.autofill-metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary, #059669);
+  line-height: 1.2;
+}
+
+.autofill-metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  margin-top: 0.25rem;
+}
+
+.autofill-sedes-breakdown {
+  margin-top: 0.75rem;
+}
+
+.autofill-sedes-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 0.5rem;
+}
+
+.autofill-sedes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.autofill-sede-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.autofill-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.autofill-progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.autofill-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary, #059669), #10b981);
+  transition: width 0.2s ease;
+}
+
+.autofill-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--color-primary, #059669), #047857);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 0.85rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.autofill-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.35);
+}
+
+.autofill-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

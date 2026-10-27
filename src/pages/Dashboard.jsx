@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { db } from '../firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import { Users, Award, Search, X, Trash2, UserPlus, Upload } from 'lucide-react';
 import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './Dashboard.css';
@@ -14,6 +16,7 @@ import { ROLES, isGlobalUser, isNationalScopeBranch } from '../utils/permissions
 import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
+import AutomaticFillModal from '../components/modals/AutomaticFillModal';
 import { TEMPLATES } from '../constants/templates';
 
 const roleOptions = [
@@ -40,6 +43,7 @@ const Dashboard = () => {
   const [showDeleteStudentModal, setShowDeleteStudentModal] = useState(false);
   const [deleteSearchTerm, setDeleteSearchTerm] = useState('');
   const [isImportingPins, setIsImportingPins] = useState(false);
+  const [showAutoFillModal, setShowAutoFillModal] = useState(false);
 
   const [newStudentRut, setNewStudentRut] = useState('');
   const [newStudentName, setNewStudentName] = useState('');
@@ -237,6 +241,36 @@ const Dashboard = () => {
   };
 
   /**
+   * 2.1 Llenado Automático Masivo en Tiempo Real (Pines, Lanyards, Pasaportes y Multi-Sede)
+   */
+  const handleProcessAutoFill = async (file, options, onProgress) => {
+    const data = await excelService.parseExcelFile(file);
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("El archivo está vacío o no contiene filas con datos.");
+    }
+
+    const plan = pinImportService.buildAutomaticFillPlan(data, studentsList, PINS_CATALOG, options);
+    if (!plan.updates || plan.updates.length === 0) {
+      throw new Error("No se encontraron estudiantes o datos válidos para procesar en el archivo.");
+    }
+
+    const total = plan.updates.length;
+    for (let i = 0; i < total; i++) {
+      const update = plan.updates[i];
+      await updateStudent(update.studentId, update.payload);
+      if (typeof onProgress === 'function') {
+        onProgress({ current: i + 1, total, currentStudent: update.name });
+      }
+    }
+
+    const msg = `¡Llenado automático completado! Se actualizaron ${plan.updates.length} estudiantes en tiempo real (${plan.totalPinsAdded} pines, ${plan.totalLanyardsDelivered} lanyards, ${plan.totalPassportsDelivered} pasaportes).`;
+    setMessage(msg);
+    setTimeout(() => setMessage(''), 8000);
+
+    return plan;
+  };
+
+  /**
    * 3. Exportación a Excel mediante excelService
    */
   const handleExportExcel = () => {
@@ -399,6 +433,7 @@ const Dashboard = () => {
           onImportStudents={() => setShowImportStudentsModal(true)}
           onExportExcel={handleExportExcel}
           onExportPins={handleExportPins}
+          onOpenAutoFill={() => setShowAutoFillModal(true)}
           onDeleteStudent={() => setShowDeleteStudentModal(true)}
           onImportPins={handleImportPins}
           onCreateUser={() => setShowCreateModal(true)}
@@ -667,6 +702,15 @@ const Dashboard = () => {
       )}
 
 
+
+      {showAutoFillModal && (
+        <AutomaticFillModal
+          isOpen={showAutoFillModal}
+          onClose={() => setShowAutoFillModal(false)}
+          onProcessAutoFill={handleProcessAutoFill}
+          user={user}
+        />
+      )}
 
       {isImportingPins && (
         <div className="dashboard-modal-overlay loading-overlay">

@@ -26,8 +26,8 @@ export const TEMPLATES = [
   },
   {
     id: 'pins',
-    label: 'Plantilla de Pines',
-    description: 'RUT + fila a lo largo con cada pin en su celda (Pin 1, Pin 2...)',
+    label: 'Plantilla de Pines y Credenciales',
+    description: 'RUT + Sede + Lanyard + Pasaporte + Pines a lo largo',
     fileName: 'Plantilla_Pines.xlsx',
     url: templateUrl('Plantilla_Pines.xlsx'),
   },

@@ -1,9 +1,13 @@
 const XLSX = require('xlsx');
 const path = require('path');
 
-// 1. Hoja principal: Pines (formato horizontal celda a celda)
+// 1. Hoja principal: Pines (formato horizontal celda a celda + Lanyard y Pasaporte + Sede)
 const pinesHeaders = [
   'RUT',
+  'Nombre',
+  'Sede',
+  'Lanyard',
+  'Pasaporte',
   'Pin 1',
   'Pin 2',
   'Pin 3',
@@ -20,10 +24,10 @@ const pinesHeaders = [
 
 const pinesData = [
   pinesHeaders,
-  ['12.345.678-5', 'Voluntariado', 'Bienestar', '', '', '', '', '', '', '', '', '', ''],
-  ['9.876.543-3', 'Semana 0/Programa IVU', 'Articulación', 'Programa de Liderazgo', '', '', '', '', '', '', '', '', ''],
-  ['11.222.333-4', 'Proyectos Estudiantiles', 'Centro de Aprendizaje', 'Vinculación con el Medio', '', '', '', '', '', '', '', '', ''],
-  ['15.678.901-2', 'Orientación Profesional', '', '', '', '', '', '', '', '', '', '', '']
+  ['12.345.678-5', 'Ana Rojas', 'Santiago', 'Sí', 'Sí', 'Voluntariado', 'Bienestar', '', '', '', '', '', '', '', '', '', ''],
+  ['9.876.543-3', 'Pedro Soto', 'Viña del Mar', 'Sí', 'Sí', 'Semana 0/Programa IVU', 'Articulación', 'Programa de Liderazgo', '', '', '', '', '', '', '', '', ''],
+  ['11.222.333-4', 'Claudia Morales', 'Concepción', 'Sí', 'Sí', 'Proyectos Estudiantiles', 'Centro de Aprendizaje', 'Vinculación con el Medio', '', '', '', '', '', '', '', '', ''],
+  ['15.678.901-2', 'Felipe Araya', 'La Serena', 'Sí', 'Sí', 'Orientación Profesional', '', '', '', '', '', '', '', '', '', '', '']
 ];
 
 const wsPines = XLSX.utils.aoa_to_sheet(pinesData);
@@ -31,6 +35,10 @@ const wsPines = XLSX.utils.aoa_to_sheet(pinesData);
 // Ancho de columnas para excelente visualización en Excel
 wsPines['!cols'] = [
   { wch: 16 }, // RUT
+  { wch: 22 }, // Nombre
+  { wch: 18 }, // Sede
+  { wch: 12 }, // Lanyard
+  { wch: 12 }, // Pasaporte
   { wch: 26 }, // Pin 1
   { wch: 26 }, // Pin 2
   { wch: 26 }, // Pin 3
@@ -71,31 +79,30 @@ wsValidos['!cols'] = [
 
 // 3. Hoja de instrucciones claras
 const instruccionesData = [
-  ['PLANTILLA DE ASIGNACIÓN DE PINES - FORMATO HORIZONTAL'],
+  ['PLANTILLA DE LLENADO AUTOMÁTICO DE PINES, LANYARD Y PASAPORTE'],
   [],
-  ['Esta plantilla permite registrar los pines tomados por cada estudiante en una fila a lo largo.'],
+  ['Esta plantilla permite registrar y actualizar pines y credenciales para estudiantes de UNA O VARIAS SEDES a la vez.'],
   [],
   ['Instrucciones de llenado:'],
-  ['1. Columna "RUT": Ingresa el RUT del alumno (con o sin puntos/guion). Debe estar previamente registrado en el sistema.'],
-  ['2. Columnas "Pin 1", "Pin 2", "Pin 3", etc. (a lo largo de la fila):'],
-  ['   - Escribe en cada cuadro/celda el nombre de UN pin que tomó el alumno.'],
+  ['1. Columna "RUT": Ingresa el RUT del alumno (con o sin puntos/guion).'],
+  ['2. Columna "Nombre" (opcional): Nombre del alumno.'],
+  ['3. Columna "Sede" (opcional): Sede a la que pertenece el alumno (permite mezclar varias sedes en el mismo archivo).'],
+  ['4. Columnas "Lanyard" y "Pasaporte": Escribe "Sí", "X", "1" o "Entregado" si se le entregó la credencial (o deja vacío si no).'],
+  ['5. Columnas "Pin 1", "Pin 2", "Pin 3", etc. (a lo largo de la fila):'],
+  ['   - Escribe en cada cuadro/celda el nombre de UN pin que ganó o tomó el estudiante.'],
   ['   - ¡No agrupes todos los pines en un solo cuadro! Cada celda corresponde a un pin individual.'],
   ['   - Si el estudiante tomó 2 pines, completa "Pin 1" y "Pin 2" y deja las siguientes celdas vacías.'],
-  ['3. Consulta los nombres oficiales en la pestaña "Pines válidos".'],
-  ['4. El sistema reconoce nombres parciales (ejemplo: "Liderazgo" o "Voluntariado").'],
-  [],
-  ['Ejemplo de estructura:'],
-  ['RUT: 12.345.678-5  |  Pin 1: Voluntariado  |  Pin 2: Bienestar  |  Pin 3: (vacío)'],
+  ['6. Consulta los nombres oficiales en la pestaña "Pines válidos". Se aceptan nombres parciales (ejemplo: "Liderazgo" o "Voluntariado").'],
   [],
   ['Formatos soportados para importación: .xlsx, .xls, .csv']
 ];
 
 const wsInstrucciones = XLSX.utils.aoa_to_sheet(instruccionesData);
-wsInstrucciones['!cols'] = [{ wch: 90 }];
+wsInstrucciones['!cols'] = [{ wch: 95 }];
 
 // Creamos el libro de trabajo con las hojas
 const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, wsPines, 'Pines');
+XLSX.utils.book_append_sheet(wb, wsPines, 'Pines y Credenciales');
 XLSX.utils.book_append_sheet(wb, wsValidos, 'Pines válidos');
 XLSX.utils.book_append_sheet(wb, wsInstrucciones, 'Instrucciones');
 
