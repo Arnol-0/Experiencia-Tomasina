@@ -50,10 +50,14 @@ export const RUT_COLUMN_ALIASES = ['rut', 'id', 'identificacion', 'cedula'];
 /** 📌 Alias aceptados para la columna de Lanyard. */
 export const LANYARD_COLUMN_ALIASES = [
   'lanyard',
+  'landyard',
   'credencial',
   'lanyard entregado',
+  'landyard entregado',
   'entrega lanyard',
+  'entrega landyard',
   'tiene lanyard',
+  'tiene landyard',
   'portacredencial'
 ];
 
@@ -65,6 +69,52 @@ export const PASSPORT_COLUMN_ALIASES = [
   'entrega pasaporte',
   'tiene pasaporte'
 ];
+
+/** 📌 Diccionario de sinónimos y variaciones frecuentes para los 12 pines oficiales */
+export const PIN_SYNONYMS = {
+  pin_ivu: ['semana 0', 'semana cero', 'semana cer0', 'semana0', 'ivu', 'programa ivu', 'induccion', 'inducción'],
+  pin_articulacion: ['articulacion', 'articulación', 'programa articulacion', 'programa articulación'],
+  pin_voluntariado: ['voluntariado', 'voluntariados', 'voluntario', 'voluntarios', 'mechoneo solidario', 'trabajos voluntarios', 'trabajo voluntariado'],
+  pin_proyectos: ['proyectos estudiantiles', 'proyectos', 'proyecto', 'proyectos concursables', 'fondos concursables', 'mercado e'],
+  pin_bienestar: ['bienestar', 'salud mental', 'primera ayuda psicologica', 'ayuda psicologica', 'proposito de vida'],
+  pin_centro_aprendizaje: ['centro de aprendizaje', 'centro aprendizaje', 'tutorias', 'tutorías'],
+  pin_liderazgo: ['programa de liderazgo', 'liderazgo', 'lideres', 'líderes', 'escuela de lideres', 'escuela de líderes'],
+  pin_orientacion: ['orientacion profesional', 'orientación profesional', 'orientacion', 'orientación'],
+  pin_destacado: ['estudiante destacado', 'estudiante destacada', 'destacado', 'destacada', 'excelencia academica', 'excelencia académica', 'premio sello'],
+  pin_representante: ['representantes tomasin@s', 'representantes tomasinos', 'representantes', 'representante', 'tomasinos', 'tomasinas'],
+  pin_internacional: ['experiencia internacional', 'internacional', 'instituto confucio', 'intercambio'],
+  pin_vcm: ['vinculacion con el medio', 'vinculación con el medio', 'vcm', 'a+s', 'innovacion social']
+};
+
+/** 📌 Mapeo numérico oficial por orden de catálogo Santo Tomás */
+export const PIN_NUMBER_MAP = {
+  '1': 'pin_ivu',
+  '2': 'pin_articulacion',
+  '3': 'pin_voluntariado',
+  '4': 'pin_proyectos',
+  '5': 'pin_bienestar',
+  '6': 'pin_centro_aprendizaje',
+  '7': 'pin_liderazgo',
+  '8': 'pin_orientacion',
+  '9': 'pin_destacado',
+  '10': 'pin_representante',
+  '11': 'pin_internacional',
+  '12': 'pin_vcm'
+};
+
+/** Verifica si una celda representa entrega de Lanyard/Landyard */
+export const isLanyardToken = (val) => {
+  const norm = normalizeText(val);
+  return ['lanyard', 'landyard', 'credencial', 'portacredencial', 'lanllard'].includes(norm) ||
+    norm.includes('lanyard') || norm.includes('landyard');
+};
+
+/** Verifica si una celda representa entrega de Pasaporte */
+export const isPassportToken = (val) => {
+  const norm = normalizeText(val);
+  return ['pasaporte', 'passport'].includes(norm) ||
+    norm.includes('pasaporte') || norm.includes('passport');
+};
 
 /** 📌 Metadatos comunes de estudiantes para no confundir con pines. */
 export const NON_PIN_COLUMN_ALIASES = [
@@ -93,6 +143,7 @@ export const NON_PIN_COLUMN_ALIASES = [
   'pines obtenidos',
   'total',
   'lanyard',
+  'landyard',
   'credencial',
   'pasaporte',
   'passport'
@@ -155,7 +206,13 @@ export const splitPinTokens = (value) =>
 
 /**
  * Resuelve los ids de pin que menciona un texto.
- * Estrategia: coincidencia exacta por nombre o id; si no hay, coincidencias parciales.
+ * 
+ * 📌 INTELIGENCIA DE COINCIDENCIA:
+ * 1. Remueve prefijos como "PIN 1:", "PIN 3:", "PIN 7:" para evaluar el nombre real ("Voluntariados").
+ *    De esta forma, si el Excel dice "PIN 1: Voluntariado", le asigna correctamente Voluntariado y no Semana 0.
+ * 2. Normaliza "Cer0" o "Cero" a "0" para "Semana Cer0".
+ * 3. Admite plurales y sinónimos (ej: "Voluntariados" -> Voluntariado, "Liderazgo" -> Programa de Liderazgo).
+ * 4. Si la celda es estrictamente numérica (ej: "PIN 3" sin texto), usa el orden oficial del catálogo.
  */
 export const matchPinIds = (value, catalog) => {
   const tokens = splitPinTokens(value);
@@ -164,22 +221,70 @@ export const matchPinIds = (value, catalog) => {
   const exactMatches = new Set();
   const partialMatches = new Set();
 
-  tokens.forEach((token) => {
-    catalog.forEach((pin) => {
-      const pinName = normalizeText(pin.name);
-      const pinId = normalizeText(pin.id);
+  tokens.forEach((rawToken) => {
+    // 1. Normalizar números y variaciones frecuentes (ej: 'cer0' -> '0', 'semana cero' -> 'semana 0')
+    const token = normalizeText(rawToken)
+      .replace(/cer0/g, '0')
+      .replace(/\bsemana cero\b/g, 'semana 0');
 
-      if (token === pinName || token === pinId) {
+    // 2. Extraer prefijo de pin si existe (ej: "pin 1: voluntariado" -> explicitNumber: "1", textAfterPrefix: "voluntariado")
+    const prefixMatch = token.match(/^pin\s*(\d{1,2})\s*[:\-]\s*(.*)$/i);
+    let explicitNumber = null;
+    let textAfterPrefix = null;
+
+    if (prefixMatch) {
+      explicitNumber = prefixMatch[1];
+      textAfterPrefix = prefixMatch[2]?.trim();
+    } else {
+      // Verificar si es únicamente "pin 3" o "pin 03"
+      const soloNumberMatch = token.match(/^pin\s*(\d{1,2})$/i);
+      if (soloNumberMatch) {
+        explicitNumber = soloNumberMatch[1];
+      }
+    }
+
+    // El texto principal a evaluar (priorizando el texto después del prefijo)
+    const candidateText = textAfterPrefix || token.replace(/^pin\s*\d*\s*/i, '').trim() || token;
+
+    // A) Búsqueda en catálogo oficial y sinónimos conocidos
+    catalog.forEach((pin) => {
+      const pinName = normalizeText(pin.name).replace(/cer0/g, '0');
+      const pinId = normalizeText(pin.id);
+      const synonyms = (PIN_SYNONYMS[pin.id] || []).map(normalizeText);
+
+      // Coincidencia exacta con nombre, id o sinónimo
+      if (
+        candidateText === pinName || 
+        candidateText === pinId || 
+        synonyms.includes(candidateText)
+      ) {
         exactMatches.add(pin.id);
         return;
       }
 
-      if (token.length < MIN_PARTIAL_LENGTH) return;
-      const isWordMatch = pinName.split(/[^a-z0-9]+/).includes(token);
-      if (isWordMatch || pinName.includes(token) || token.includes(pinName)) {
-        if (token.length > 3 || isWordMatch) partialMatches.add(pin.id);
+      // Coincidencia parcial inteligente
+      if (candidateText.length >= MIN_PARTIAL_LENGTH) {
+        const isWordMatch = pinName.split(/[^a-z0-9]+/).includes(candidateText);
+        const matchesSynonym = synonyms.some(s => s.includes(candidateText) || candidateText.includes(s));
+        
+        if (
+          isWordMatch || 
+          matchesSynonym || 
+          pinName.includes(candidateText) || 
+          candidateText.includes(pinName)
+        ) {
+          partialMatches.add(pin.id);
+        }
       }
     });
+
+    // B) Si no hubo coincidencia por texto y la celda tenía número de pin explícito (ej: "PIN 3")
+    if (exactMatches.size === 0 && partialMatches.size === 0 && explicitNumber) {
+      const pinIdByNum = PIN_NUMBER_MAP[explicitNumber];
+      if (pinIdByNum) {
+        exactMatches.add(pinIdByNum);
+      }
+    }
   });
 
   return [...(exactMatches.size ? exactMatches : partialMatches)];
@@ -235,6 +340,9 @@ export const buildPinAssignments = (rows, students, catalog) => {
 
       const rawVal = String(cellValue ?? '').trim();
       if (!rawVal) return;
+
+      // Si la celda es una credencial (Lanyard/Pasaporte) en formato lista, la ignoramos aquí
+      if (isLanyardToken(rawVal) || isPassportToken(rawVal)) return;
 
       const ids = matchPinIds(rawVal, catalog);
       if (ids.length > 0) {
@@ -411,12 +519,11 @@ export const buildAutomaticFillPlan = (rows, students, catalog, options = {}) =>
       const rawVal = String(cellVal ?? '').trim();
       if (!rawVal) return;
 
-      const norm = normalizeText(rawVal);
-      if (norm === 'lanyard' || norm === 'credencial') {
+      if (isLanyardToken(rawVal)) {
         rowWantsLanyard = true;
         return;
       }
-      if (norm === 'pasaporte' || norm === 'passport') {
+      if (isPassportToken(rawVal)) {
         rowWantsPassport = true;
         return;
       }
