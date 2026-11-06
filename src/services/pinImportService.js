@@ -358,11 +358,11 @@ export const buildAutomaticFillPlan = (rows, students, catalog, options = {}) =>
       }
 
       // Si no existe, extraemos metadatos de la fila si están presentes
-      const nameKey = findColumnKey(row, ['nombre', 'estudiante', 'alumno', 'nombre completo']);
+      const nameKey = findColumnKey(row, ['nombre', 'estudiante', 'alumno', 'nombre completo', 'nombre y apellidos']);
       const branchKey = findColumnKey(row, ['sede', 'campus', 'sucursal']);
-      const gradeKey = findColumnKey(row, ['carrera', 'grado', 'programa']);
-      const jornadaKey = findColumnKey(row, ['jornada']);
-      const institutionKey = findColumnKey(row, ['institucion', 'tipo institucion']);
+      const gradeKey = findColumnKey(row, ['carrera', 'grado', 'programa', 'carrera/programa', 'curso', 'titulacion', 'titulación', 'especialidad', 'mencion', 'mención', 'plan']);
+      const jornadaKey = findColumnKey(row, ['jornada', 'turno']);
+      const institutionKey = findColumnKey(row, ['institucion', 'tipo institucion', 'tipo institución', 'institución']);
 
       const rowName = String(row?.[nameKey] ?? '').trim();
       const rowBranch = String(row?.[branchKey] ?? '').trim();

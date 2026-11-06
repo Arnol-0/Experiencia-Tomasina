@@ -4,7 +4,8 @@ import { useData } from '../context/DataContext';
 import StudentCard from '../components/StudentCard';
 import EditStudentModal from '../components/modals/EditStudentModal';
 import CustomSelect from '../components/CustomSelect';
-import { Search, Grid, List, Award, ChevronLeft, ChevronRight, WifiOff, Filter } from 'lucide-react';
+import { Search, Grid, List, Award, ChevronLeft, ChevronRight, WifiOff, Filter, Zap } from 'lucide-react';
+import SedeLoadingAnimation from '../components/SedeLoadingAnimation';
 import { isGlobalUser, canManageStudents } from '../utils/permissions';
 import { buildCredentialsMap } from '../utils/credentials';
 import { branchOptions as CANONICAL_BRANCH_OPTIONS } from '../constants/branches';
@@ -45,6 +46,7 @@ const Directory = () => {
 
   // Sede seleccionada para filtrar (solo admins y coordinadores pueden cambiarla)
   const [selectedBranch, setSelectedBranch] = useState('Todas las Sedes');
+  const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
 
   // Estado de conexión a Internet
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -53,13 +55,26 @@ const Directory = () => {
   // CONTEXTO Y AUTENTICACIÓN (Sincronización en Tiempo Real vía DataContext)
   // -------------------------------------------------------------------------
   const { user } = useAuth();
-  const { studentsList, updateStudent } = useData();
+  const { studentsList, isLoadingStudents, isFromCache, updateStudent } = useData();
 
   const isGlobal = isGlobalUser(user);
   const canEdit = canManageStudents(user);
 
   // Sede efectiva para el filtrado
   const effectiveBranch = isGlobal ? selectedBranch : (user?.branch || null);
+
+  // Estado combinado de carga (inicial o cambio dinámico de sede)
+  const isDataLoading = isLoadingStudents || isSwitchingBranch;
+
+  // Transición suave al cambiar de sede
+  const handleBranchChange = (newBranch) => {
+    if (newBranch === selectedBranch) return;
+    setIsSwitchingBranch(true);
+    setSelectedBranch(newBranch);
+    setTimeout(() => {
+      setIsSwitchingBranch(false);
+    }, 280);
+  };
 
   // -------------------------------------------------------------------------
   // DETECCIÓN DE ESTADO OFFLINE/ONLINE
@@ -220,7 +235,7 @@ const Directory = () => {
               <Filter size={16} className="branch-filter-icon" />
               <CustomSelect
                 value={selectedBranch}
-                onChange={val => setSelectedBranch(val)}
+                onChange={handleBranchChange}
                 options={BRANCH_OPTIONS}
                 placeholder="Filtrar por sede..."
               />
@@ -263,42 +278,71 @@ const Directory = () => {
 
       {/* ===== RESUMEN DE CARGA EN TIEMPO REAL ===== */}
       <div className="directory-summary">
-        <span className="summary-count">
-          {filteredStudents.length > 0
-            ? `Mostrando ${Math.min(startIndex + ITEMS_PER_PAGE, filteredStudents.length)} de ${filteredStudents.length} resultado(s) — ${baseStudents.length} estudiante(s) en total`
-            : studentsList.length === 0
-              ? 'Conectando y cargando estudiantes en tiempo real...'
-              : 'No hay resultados'}
-        </span>
-      </div>
+        <div className="summary-left">
+          <span className="summary-count">
+            {isDataLoading ? (
+              <span className="loading-summary-tag">
+                <span className="summary-pulse-dot" />
+                Sincronizando {effectiveBranch || 'Todas las Sedes'}...
+              </span>
+            ) : filteredStudents.length > 0 ? (
+              `Mostrando ${Math.min(startIndex + ITEMS_PER_PAGE, filteredStudents.length)} de ${filteredStudents.length} resultado(s) — ${baseStudents.length} estudiante(s) en ${effectiveBranch || 'todas las sedes'}`
+            ) : (
+              'No hay resultados'
+            )}
+          </span>
+        </div>
 
-      {/* ===== PAGINACIÓN SUPERIOR ===== */}
-      {filteredStudents.length > 0 && renderPaginationControls()}
-
-      {/* ===== GRILLA / LISTA DE TARJETAS DE ESTUDIANTE ===== */}
-      <div className={viewMode === 'grid' ? 'students-grid' : 'students-list'}>
-        {currentStudents.length > 0 ? (
-          currentStudents.map(student => (
-            <StudentCard
-              key={student.id}
-              student={student}
-              onEdit={canEdit ? setEditingStudent : undefined}
-              onDeliverCredential={canEdit ? handleDeliverCredential : undefined}
-            />
-          ))
-        ) : (
-          <div className="no-results">
-            <p>
-              {searchTerm
-                ? `No se encontraron estudiantes que coincidan con "${searchTerm}".`
-                : 'No hay estudiantes registrados en esta sede todavía.'}
-            </p>
+        {isFromCache && !isDataLoading && (
+          <div className="cache-indicator-pill" title="Cargado instantáneamente desde la memoria local protegida">
+            <Zap size={13} className="cache-icon" /> Ultrarrápido (Caché local)
           </div>
         )}
       </div>
 
-      {/* ===== PAGINACIÓN INFERIOR ===== */}
-      {filteredStudents.length > 0 && renderPaginationControls()}
+      {/* ===== CONTENIDO: ANIMACIÓN DE CARGA O GRILLA DE ESTUDIANTES ===== */}
+      {isDataLoading ? (
+        <SedeLoadingAnimation
+          sedeName={effectiveBranch || 'Todas las Sedes'}
+          message={
+            isLoadingStudents
+              ? 'Conectando con la base de datos de Firestore en tiempo real...'
+              : `Sincronizando estudiantes de ${effectiveBranch}...`
+          }
+          showSkeletons={true}
+          count={ITEMS_PER_PAGE}
+        />
+      ) : (
+        <>
+          {/* ===== PAGINACIÓN SUPERIOR ===== */}
+          {filteredStudents.length > 0 && renderPaginationControls()}
+
+          {/* ===== GRILLA / LISTA DE TARJETAS DE ESTUDIANTE ===== */}
+          <div className={viewMode === 'grid' ? 'students-grid' : 'students-list'}>
+            {currentStudents.length > 0 ? (
+              currentStudents.map(student => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  onEdit={canEdit ? setEditingStudent : undefined}
+                  onDeliverCredential={canEdit ? handleDeliverCredential : undefined}
+                />
+              ))
+            ) : (
+              <div className="no-results">
+                <p>
+                  {searchTerm
+                    ? `No se encontraron estudiantes que coincidan con "${searchTerm}".`
+                    : `No hay estudiantes registrados en ${effectiveBranch || 'esta sede'} todavía.`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ===== PAGINACIÓN INFERIOR ===== */}
+          {filteredStudents.length > 0 && renderPaginationControls()}
+        </>
+      )}
 
       {/* ===== MODAL DE EDICIÓN ===== */}
       <EditStudentModal

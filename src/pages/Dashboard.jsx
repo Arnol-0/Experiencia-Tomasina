@@ -27,7 +27,7 @@ const roleOptions = [
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { studentsList, addStudents, updateStudent, deleteStudent, deleteStudentsByBranch } = useData();
+  const { studentsList, isLoadingStudents, addStudents, batchUpdateStudents, updateStudent, deleteStudent, deleteStudentsByBranch } = useData();
   
   const [newBranch, setNewBranch] = useState('Arica');
   const [message, setMessage] = useState('');
@@ -255,11 +255,15 @@ const Dashboard = () => {
     }
 
     const total = plan.updates.length;
-    for (let i = 0; i < total; i++) {
-      const update = plan.updates[i];
-      await updateStudent(update.studentId, update.payload);
-      if (typeof onProgress === 'function') {
-        onProgress({ current: i + 1, total, currentStudent: update.name });
+    if (batchUpdateStudents) {
+      await batchUpdateStudents(plan.updates, onProgress);
+    } else {
+      for (let i = 0; i < total; i++) {
+        const update = plan.updates[i];
+        await updateStudent(update.studentId, update.payload);
+        if (typeof onProgress === 'function') {
+          onProgress({ current: i + 1, total, currentStudent: update.name });
+        }
       }
     }
 
@@ -403,8 +407,12 @@ const Dashboard = () => {
           <div className="stat-icon-wrapper"><Users className="stat-icon" size={28} /></div>
           <div className="stat-content">
             <h3>Estudiantes</h3>
-            <span className="stat-number text-gradient">{studentsCount}</span>
-            <span className="stat-desc">En {displayBranch}</span>
+            <span className="stat-number text-gradient">
+              {isLoadingStudents ? '...' : studentsCount}
+            </span>
+            <span className="stat-desc">
+              {isLoadingStudents ? 'Sincronizando...' : `En ${displayBranch}`}
+            </span>
           </div>
         </div>
         
@@ -412,8 +420,12 @@ const Dashboard = () => {
           <div className="stat-icon-wrapper"><Award className="stat-icon" size={28} /></div>
           <div className="stat-content">
             <h3>Pines Entregados</h3>
-            <span className="stat-number text-gradient">{pinsCount}</span>
-            <span className="stat-desc">En {displayBranch}</span>
+            <span className="stat-number text-gradient">
+              {isLoadingStudents ? '...' : pinsCount}
+            </span>
+            <span className="stat-desc">
+              {isLoadingStudents ? 'Sincronizando...' : `En ${displayBranch}`}
+            </span>
           </div>
         </div>
       </div>

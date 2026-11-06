@@ -276,6 +276,7 @@
 .directory-summary {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
@@ -283,8 +284,44 @@
   font-size: 0.875rem;
   color: var(--text-muted);
 }
+.summary-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 .summary-count {
   font-weight: 500;
+}
+.loading-summary-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #065f46;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.summary-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: liveBlink 1.2s infinite ease-in-out;
+}
+.cache-indicator-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #065f46;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.cache-icon {
+  color: #10b981;
 }
 .summary-hasmore {
   font-style: italic;

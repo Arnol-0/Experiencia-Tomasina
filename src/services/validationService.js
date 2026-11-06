@@ -195,11 +195,11 @@ export const validationService = {
 
     rows.forEach((row, idx) => {
       const rowNum = idx + 2; // +2 considerando cabecera en fila 1
-      const rawRut = findColumnValue(row, ['rut', 'id', 'identificacion', 'cedula']);
-      const rawName = findColumnValue(row, ['nombre', 'nombres', 'estudiante', 'alumno']);
-      const rawGrade = findColumnValue(row, ['carrera', 'programa']);
+      const rawRut = findColumnValue(row, ['rut', 'id', 'identificacion', 'cedula', 'run']);
+      const rawName = findColumnValue(row, ['nombre', 'nombres', 'estudiante', 'alumno', 'nombre completo', 'nombre y apellidos']);
+      const rawGrade = findColumnValue(row, ['carrera', 'programa', 'carrera/programa', 'grado', 'curso', 'titulacion', 'titulación', 'especialidad', 'mencion', 'mención', 'plan']);
       const rawJornada = findColumnValue(row, ['jornada', 'turno']);
-      const rawInst = findColumnValue(row, ['institucion', 'institución', 'tipo']);
+      const rawInst = findColumnValue(row, ['institucion', 'institución', 'tipo', 'tipo institucion', 'tipo institución']);
       const rawBranch = findColumnValue(row, ['sede', 'branch', 'campus', 'sucursal']);
 
       // Si la fila está completamente vacía, la omitimos
