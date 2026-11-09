@@ -17,6 +17,7 @@ import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
 import AutomaticFillModal from '../components/modals/AutomaticFillModal';
+import VersionBubble from '../components/VersionBubble';
 import { TEMPLATES } from '../constants/templates';
 
 const roleOptions = [
@@ -399,12 +400,9 @@ const Dashboard = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
             <h1 className="page-title" style={{ margin: 0 }}>Panel de Control</h1>
-            <span className="app-version-badge">v1.0</span>
+            <VersionBubble label="v1.0" placement="bottom-start" />
           </div>
           <p className="page-subtitle" style={{ margin: 0 }}>Bienvenido, {user.name || user.email} ({displayBranch})</p>
-          <p className="app-credit-text">
-            Versión 1.0 &bull; Creado por <strong>Arnoldo Ortega Suarez</strong>
-          </p>
         </div>
       </div>
 
@@ -741,7 +739,10 @@ const Dashboard = () => {
       )}
 
       <footer className="dashboard-footer">
-        <p>Experiencia Tomasina &bull; Versión 1.0 &bull; Creado por <strong>Arnoldo Ortega Suarez</strong></p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span>Experiencia Tomasina</span>
+          <VersionBubble label="Versión 1.0" placement="top-center" />
+        </div>
       </footer>
     </div>
   );

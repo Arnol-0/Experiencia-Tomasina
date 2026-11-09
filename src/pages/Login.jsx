@@ -5,6 +5,7 @@ import { LogIn } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import lottie from 'lottie-web';
 import loginAnimation from '../assets/Login.json';
+import VersionBubble from '../components/VersionBubble';
 import './Login.css';
 
 /**
@@ -169,12 +170,9 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Pie de versión y créditos de autor */}
+        {/* Pie de versión interactivo con burbuja de creador */}
         <div className="login-credits">
-          <span className="login-version-badge">Versión 1.0</span>
-          <p className="login-author">
-            Creado por <strong>Arnoldo Ortega Suarez</strong>
-          </p>
+          <VersionBubble label="Versión 1.0" placement="top-center" />
         </div>
       </div>
     </div>

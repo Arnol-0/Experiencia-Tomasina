@@ -6,30 +6,6 @@
   margin-bottom: 3rem;
 }
 
-.app-version-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  background-color: var(--color-primary-light);
-  padding: 0.2rem 0.65rem;
-  border-radius: var(--radius-full);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.app-credit-text {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-top: 0.35rem;
-  margin-bottom: 0;
-}
-
-.app-credit-text strong {
-  color: var(--color-primary-dark);
-}
-
 .dashboard-footer {
   margin-top: 3.5rem;
   padding: 1.5rem 0;
