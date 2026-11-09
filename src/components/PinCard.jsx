@@ -28,8 +28,8 @@ const PinCard = ({ pin, isCollected, isAvailable, onClick, className = '' }) => 
   // 1. Selector dinámico del icono: Busca el icono en 'lucide-react' o usa un signo de pregunta por defecto
   const IconComponent = Icons[pin.icon] || Icons.HelpCircle;
 
-  // 2. Determina si se puede hacer clic: Solo si está disponible y aún no se ha obtenido
-  const isClickable = !isCollected && isAvailable;
+  // 2. Determina si se puede hacer clic: Solo si está disponible, no obtenido y tiene acción
+  const isClickable = !isCollected && isAvailable && typeof onClick === 'function';
 
   return (
     <div 

@@ -101,4 +101,14 @@ export const canManageStudents = (user) =>
 export const canUnlockPins = (user) =>
   user?.role === ROLES.ADMIN ||
   user?.role === ROLES.COORDINATOR ||
-  user?.role === ROLES.DIRECTOR;
+  user?.role === ROLES.DIRECTOR ||
+  user?.role === ROLES.ASSISTANT;
+
+/**
+ * 9. ¿Este usuario puede entregar/activar credenciales físicas (lanyard, pasaporte)?
+ */
+export const canDeliverCredentials = (user) =>
+  user?.role === ROLES.ADMIN ||
+  user?.role === ROLES.COORDINATOR ||
+  user?.role === ROLES.DIRECTOR ||
+  user?.role === ROLES.ASSISTANT;

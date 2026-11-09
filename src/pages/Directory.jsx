@@ -6,7 +6,7 @@ import EditStudentModal from '../components/modals/EditStudentModal';
 import CustomSelect from '../components/CustomSelect';
 import { Search, Grid, List, Award, ChevronLeft, ChevronRight, WifiOff, Filter, Zap } from 'lucide-react';
 import SedeLoadingAnimation from '../components/SedeLoadingAnimation';
-import { isGlobalUser, canManageStudents } from '../utils/permissions';
+import { isGlobalUser, canManageStudents, canDeliverCredentials } from '../utils/permissions';
 import { buildCredentialsMap } from '../utils/credentials';
 import { branchOptions as CANONICAL_BRANCH_OPTIONS } from '../constants/branches';
 import './Directory.css';
@@ -59,6 +59,7 @@ const Directory = () => {
 
   const isGlobal = isGlobalUser(user);
   const canEdit = canManageStudents(user);
+  const canDeliver = canDeliverCredentials(user);
 
   // Sede efectiva para el filtrado
   const effectiveBranch = isGlobal ? selectedBranch : (user?.branch || null);
@@ -325,7 +326,7 @@ const Directory = () => {
                   key={student.id}
                   student={student}
                   onEdit={canEdit ? setEditingStudent : undefined}
-                  onDeliverCredential={canEdit ? handleDeliverCredential : undefined}
+                  onDeliverCredential={canDeliver ? handleDeliverCredential : undefined}
                 />
               ))
             ) : (

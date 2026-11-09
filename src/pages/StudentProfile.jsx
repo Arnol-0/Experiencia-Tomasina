@@ -6,7 +6,7 @@ import PinCard from '../components/PinCard';
 import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle } from 'lucide-react';
 import { CREDENTIAL_CATALOG } from '../constants/credentials';
 import { isCredentialDelivered, buildCredentialsMap } from '../utils/credentials';
-import { canUnlockPins } from '../utils/permissions';
+import { canUnlockPins, canDeliverCredentials } from '../utils/permissions';
 import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './StudentProfile.css';
 
@@ -44,9 +44,10 @@ const StudentProfile = () => {
   const { studentsList, updateStudent } = useData();
   const student = studentsList.find(s => s.id === id);
 
-  // 3. Usuario de la sesión: determina si puede registrar entregas de credenciales
+  // 3. Usuario de la sesión: determina si puede registrar entregas de credenciales y pines
   const { user } = useAuth();
-  const canDeliver = canUnlockPins(user);
+  const canDeliver = canDeliverCredentials(user);
+  const canUnlock = canUnlockPins(user);
 
   // Estados locales para el modal de desbloqueo de pines
   const [selectedPin, setSelectedPin] = useState(null);
@@ -85,6 +86,9 @@ const StudentProfile = () => {
   // INTERACCIÓN: Clic sobre un Pin
   // --------------------------------------------------------------------------
   const handlePinClick = (pin) => {
+    // Solo permitimos abrir el modal si el usuario tiene permiso para desbloquear pines
+    if (!canUnlock) return;
+
     const collected = student.collectedPins || [];
     const available = student.availablePins || [];
     
@@ -235,16 +239,20 @@ const StudentProfile = () => {
               );
             })}
 
-            {PINS_CATALOG.map(pin => (
-              <PinCard
-                key={pin.id}
-                pin={pin}
-                isCollected={(student.collectedPins || []).includes(pin.id)}
-                isAvailable={(student.availablePins || []).includes(pin.id)}
-                onClick={() => handlePinClick(pin)}
-                icons={Icons}
-              />
-            ))}
+            {PINS_CATALOG.map(pin => {
+              const isCollected = (student.collectedPins || []).includes(pin.id);
+              const isAvailable = (student.availablePins || []).includes(pin.id);
+              return (
+                <PinCard
+                  key={pin.id}
+                  pin={pin}
+                  isCollected={isCollected}
+                  isAvailable={isAvailable}
+                  onClick={canUnlock && isAvailable ? () => handlePinClick(pin) : undefined}
+                  icons={Icons}
+                />
+              );
+            })}
           </div>
 
           {/* Sólo aparece si Firestore rechazó la entrega: la tarjeta volvió a
