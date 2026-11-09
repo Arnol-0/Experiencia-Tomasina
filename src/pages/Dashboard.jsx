@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Users, Award, Search, X, Trash2, UserPlus, Upload } from 'lucide-react';
+import { Users, Award, Search, X, Trash2, UserPlus, Upload, AlertTriangle } from 'lucide-react';
 import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './Dashboard.css';
 import CustomSelect from '../components/CustomSelect';
@@ -17,6 +17,7 @@ import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
 import AutomaticFillModal from '../components/modals/AutomaticFillModal';
+import UnmatchedPinsModal from '../components/modals/UnmatchedPinsModal';
 import VersionBubble from '../components/VersionBubble';
 import { TEMPLATES } from '../constants/templates';
 
@@ -45,6 +46,8 @@ const Dashboard = () => {
   const [deleteSearchTerm, setDeleteSearchTerm] = useState('');
   const [isImportingPins, setIsImportingPins] = useState(false);
   const [showAutoFillModal, setShowAutoFillModal] = useState(false);
+  const [showUnmatchedModal, setShowUnmatchedModal] = useState(false);
+  const [unmatchedData, setUnmatchedData] = useState(null);
 
   const [newStudentRut, setNewStudentRut] = useState('');
   const [newStudentName, setNewStudentName] = useState('');
@@ -229,8 +232,21 @@ const Dashboard = () => {
         msg += ` ${plan.rowsWithoutRut} filas no tienen RUT.`;
       }
 
+      // Si hubo filas que no coincidieron, almacenamos los datos y abrimos el modal
+      if (plan.unmatchedRows && plan.unmatchedRows.length > 0) {
+        setUnmatchedData({
+          rows: plan.unmatchedRows,
+          fileName: file.name,
+          totalAssigned: plan.updates.length,
+          totalRows: data.length
+        });
+        setShowUnmatchedModal(true);
+      } else {
+        setUnmatchedData(null);
+      }
+
       setMessage(msg);
-      setTimeout(() => setMessage(''), 8000);
+      setTimeout(() => setMessage(''), 10000);
     } catch (error) {
       console.error("Error importando pines:", error);
       setMessage(`Error al procesar archivo de pines: ${error.message}`);
@@ -435,8 +451,43 @@ const Dashboard = () => {
       </div>
 
       {message && (
-        <div style={{ background: '#dcfce7', color: '#166534', padding: '1rem', borderRadius: '0.5rem', marginBottom: '2rem', textAlign: 'center', fontWeight: 'bold' }}>
-          {message}
+        <div style={{ 
+          background: unmatchedData?.rows?.length > 0 ? '#fffbeb' : '#dcfce7', 
+          color: unmatchedData?.rows?.length > 0 ? '#92400e' : '#166534', 
+          border: unmatchedData?.rows?.length > 0 ? '1px solid #fde68a' : '1px solid #bbf7d0',
+          padding: '1rem 1.25rem', 
+          borderRadius: '0.75rem', 
+          marginBottom: '2rem', 
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          fontWeight: '600'
+        }}>
+          <span>{message}</span>
+          {unmatchedData?.rows?.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowUnmatchedModal(true)}
+              style={{
+                background: '#d97706',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.4rem 0.9rem',
+                borderRadius: '0.5rem',
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                boxShadow: '0 2px 6px rgba(217, 119, 6, 0.3)'
+              }}
+            >
+              <AlertTriangle size={15} /> Ver No Coincidentes ({unmatchedData.rows.length})
+            </button>
+          )}
         </div>
       )}
 
@@ -725,6 +776,14 @@ const Dashboard = () => {
           onClose={() => setShowAutoFillModal(false)}
           onProcessAutoFill={handleProcessAutoFill}
           user={user}
+        />
+      )}
+
+      {showUnmatchedModal && (
+        <UnmatchedPinsModal
+          isOpen={showUnmatchedModal}
+          onClose={() => setShowUnmatchedModal(false)}
+          data={unmatchedData}
         />
       )}
 

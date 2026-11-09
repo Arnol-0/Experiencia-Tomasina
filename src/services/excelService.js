@@ -163,6 +163,32 @@ export const excelService = {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pines por RUT");
     XLSX.writeFile(wb, fileName);
+  },
+
+  /**
+   * 5. Exporta el listado de filas/estudiantes que no pudieron ser asociados durante la importación.
+   *
+   * @param {Array} unmatchedList - Filas no coincidentes
+   * @param {String} fileName - Nombre del archivo a generar
+   */
+  exportUnmatchedPinsToExcel: (unmatchedList, fileName = 'Pines_No_Coincidentes.xlsx') => {
+    if (!Array.isArray(unmatchedList) || unmatchedList.length === 0) return;
+
+    const exportData = unmatchedList.map((item, idx) => ({
+      'N° Fila Excel': item.rowNumber || (idx + 1),
+      'RUT Ingresado': item.rut || 'Sin RUT',
+      'RUT Formateado': item.formattedRut || item.cleanRut || '',
+      'Nombre': item.name || 'No especificado en Excel',
+      'Sede': item.branch || 'No especificada',
+      'Carrera': item.grade || 'No especificada',
+      'Pines en la Fila': item.pinsText || '',
+      'Motivo': item.reason || 'Estudiante no registrado en el sistema'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pines No Coincidentes");
+    XLSX.writeFile(wb, fileName);
   }
 };
 

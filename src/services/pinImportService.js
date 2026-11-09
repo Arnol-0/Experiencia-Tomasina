@@ -302,6 +302,7 @@ export const buildPinAssignments = (rows, students, catalog) => {
     rowsWithoutStudent: 0,
     rowsWithoutPins: 0,
     unknownPins: [],
+    unmatchedRows: [],
   };
 
   if (!Array.isArray(rows) || rows.length === 0) return result;
@@ -315,11 +316,44 @@ export const buildPinAssignments = (rows, students, catalog) => {
 
   const planned = new Map(); // studentId -> { student, pins: Set, added: Set }
 
-  rows.forEach((row) => {
+  rows.forEach((row, index) => {
+    const excelRowNumber = index + 2;
     const rutKey = findColumnKey(row, RUT_COLUMN_ALIASES);
     const rawRut = String(row?.[rutKey] ?? '').trim();
+
+    // Extraer metadatos descriptivos de la fila para trazabilidad en caso de no coincidencia
+    const nameKey = findColumnKey(row, ['nombre', 'estudiante', 'alumno', 'nombre completo', 'nombre y apellidos']);
+    const branchKey = findColumnKey(row, ['sede', 'campus', 'sucursal']);
+    const gradeKey = findColumnKey(row, ['carrera', 'grado', 'programa', 'carrera/programa', 'curso', 'especialidad']);
+
+    const rowName = nameKey ? String(row[nameKey] ?? '').trim() : '';
+    const rowBranch = branchKey ? String(row[branchKey] ?? '').trim() : '';
+    const rowGrade = gradeKey ? String(row[gradeKey] ?? '').trim() : '';
+
+    // Extraer texto de pines presentes en la fila
+    const pinsInRow = [];
+    Object.entries(row).forEach(([colKey, cellValue]) => {
+      if (colKey === rutKey) return;
+      if (!isPinColumn(colKey)) return;
+      const v = String(cellValue ?? '').trim();
+      if (v) pinsInRow.push(v);
+    });
+    const pinsSummary = pinsInRow.join(', ');
+
     if (!rawRut) {
       result.rowsWithoutRut += 1;
+      result.unmatchedRows.push({
+        rowNumber: excelRowNumber,
+        rut: 'Sin RUT',
+        cleanRut: '',
+        formattedRut: 'Sin RUT',
+        name: rowName,
+        branch: rowBranch,
+        grade: rowGrade,
+        pinsText: pinsSummary,
+        reason: 'La fila no contiene RUT',
+        rawRow: row
+      });
       return;
     }
 
@@ -327,6 +361,18 @@ export const buildPinAssignments = (rows, students, catalog) => {
     const student = studentsByRut.get(cleanRut);
     if (!student) {
       result.rowsWithoutStudent += 1;
+      result.unmatchedRows.push({
+        rowNumber: excelRowNumber,
+        rut: rawRut,
+        cleanRut,
+        formattedRut: validationService.formatRut(cleanRut) || rawRut,
+        name: rowName,
+        branch: rowBranch,
+        grade: rowGrade,
+        pinsText: pinsSummary,
+        reason: 'El RUT no coincide con ningún estudiante registrado',
+        rawRow: row
+      });
       return;
     }
 
@@ -427,6 +473,7 @@ export const buildAutomaticFillPlan = (rows, students, catalog, options = {}) =>
     unknownPins: [],
     rowsWithoutRut: 0,
     rowsWithoutStudent: 0,
+    unmatchedRows: [],
     totalRows: Array.isArray(rows) ? rows.length : 0,
   };
 
@@ -446,11 +493,23 @@ export const buildAutomaticFillPlan = (rows, students, catalog, options = {}) =>
 
   const planned = new Map(); // studentId -> plan
 
-  rows.forEach((row) => {
+  rows.forEach((row, index) => {
     const rutKey = findColumnKey(row, RUT_COLUMN_ALIASES);
     const rawRut = String(row?.[rutKey] ?? '').trim();
     if (!rawRut) {
       result.rowsWithoutRut += 1;
+      result.unmatchedRows.push({
+        rowNumber: index + 2,
+        rut: 'Sin RUT',
+        cleanRut: '',
+        formattedRut: 'Sin RUT',
+        name: '',
+        branch: '',
+        grade: '',
+        pinsText: '',
+        reason: 'La fila no contiene RUT',
+        rawRow: row
+      });
       return;
     }
 
@@ -462,6 +521,18 @@ export const buildAutomaticFillPlan = (rows, students, catalog, options = {}) =>
     if (!student) {
       if (!autoCreateStudents) {
         result.rowsWithoutStudent += 1;
+        result.unmatchedRows.push({
+          rowNumber: index + 2,
+          rut: rawRut,
+          cleanRut,
+          formattedRut: formattedRut || rawRut,
+          name: '',
+          branch: '',
+          grade: '',
+          pinsText: '',
+          reason: 'El RUT no coincide con ningún estudiante registrado',
+          rawRow: row
+        });
         return;
       }
 
