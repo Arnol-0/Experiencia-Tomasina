@@ -168,6 +168,14 @@ const Login = () => {
             INICIAR SESIÓN
           </button>
         </form>
+
+        {/* Pie de versión y créditos de autor */}
+        <div className="login-credits">
+          <span className="login-version-badge">Versión 1.0</span>
+          <p className="login-author">
+            Creado por <strong>Arnoldo Ortega Suarez</strong>
+          </p>
+        </div>
       </div>
     </div>
   );
