@@ -188,15 +188,17 @@ export const playScanBeep = () => {
  */
 export const useBarcodeScanner = ({
   onScan,
+  onBurstStart,
   inputRef,
   enabled = true,
-  maxIntervalMs = 50
+  maxIntervalMs = 45
 }) => {
   const bufferRef = useRef('');
   const lastKeyTimeRef = useRef(0);
   const intervalsRef = useRef([]);
   const isBurstRef = useRef(false);
   const finishTimeoutRef = useRef(null);
+  const preBurstValueRef = useRef('');
 
   useEffect(() => {
     if (!enabled) return;
@@ -255,20 +257,26 @@ export const useBarcodeScanner = ({
           clearTimeout(finishTimeoutRef.current);
           finishTimeoutRef.current = null;
         }
+        preBurstValueRef.current = inputRef?.current ? inputRef.current.value : '';
         bufferRef.current = '';
         intervalsRef.current = [];
         isBurstRef.current = false;
       } else {
         intervalsRef.current.push(interval);
-      }
 
-      // Detección de ráfaga de escáner:
-      // Si tenemos al menos 2 intervalos recientes menores a maxIntervalMs
-      if (intervalsRef.current.length >= 2) {
-        const recent = intervalsRef.current.slice(-3);
-        const avgRecent = recent.reduce((a, b) => a + b, 0) / recent.length;
-        if (avgRecent <= maxIntervalMs) {
-          isBurstRef.current = true;
+        // Si el intervalo entre teclas es ≤ maxIntervalMs (típico de pistola 5-30ms):
+        // Confirmamos ráfaga de escáner inmediatamente desde la 2da tecla
+        if (interval <= maxIntervalMs) {
+          if (!isBurstRef.current) {
+            isBurstRef.current = true;
+            // Borramos inmediatamente cualquier carácter que haya entrado en la 1ra tecla (ej: 'h')
+            if (inputRef?.current) {
+              inputRef.current.value = preBurstValueRef.current;
+            }
+            if (typeof onBurstStart === 'function') {
+              onBurstStart(preBurstValueRef.current);
+            }
+          }
         }
       }
 

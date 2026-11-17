@@ -53,6 +53,9 @@ const Directory = () => {
   useBarcodeScanner({
     inputRef: searchInputRef,
     enabled: !editingStudent,
+    onBurstStart: (prevVal) => {
+      setSearchTerm(prevVal);
+    },
     onScan: (result) => {
       const targetRut = result.found ? result.formatted : result.raw;
       if (targetRut) {
@@ -66,7 +69,11 @@ const Directory = () => {
   });
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    const val = e.target.value;
+    if (val.toLowerCase().startsWith('http') || val.toLowerCase().startsWith('sidiv') || val.includes('RUN=')) {
+      return;
+    }
+    setSearchTerm(val);
   };
 
   const handleSearchPaste = (e) => {
