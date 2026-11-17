@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import StudentCard from '../components/StudentCard';
 import EditStudentModal from '../components/modals/EditStudentModal';
 import CustomSelect from '../components/CustomSelect';
-import { Search, Grid, List, Award, ChevronLeft, ChevronRight, WifiOff, Filter, Zap } from 'lucide-react';
+import { Search, Grid, List, Award, ChevronLeft, ChevronRight, WifiOff, Filter, Zap, X } from 'lucide-react';
 import SedeLoadingAnimation from '../components/SedeLoadingAnimation';
 import { isGlobalUser, canManageStudents, canDeliverCredentials } from '../utils/permissions';
 import { buildCredentialsMap } from '../utils/credentials';
+import { validationService } from '../services/validationService';
+import { extractRutFromScan, useBarcodeScanner } from '../utils/scanner';
 import { branchOptions as CANONICAL_BRANCH_OPTIONS } from '../constants/branches';
 import './Directory.css';
 
@@ -43,6 +45,49 @@ const Directory = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [editingStudent, setEditingStudent] = useState(null);
+  const searchInputRef = useRef(null);
+
+  // -------------------------------------------------------------------------
+  // INTEGRACIÓN: Pistola de Escáner de Cédula de Identidad (Hardware Wedge)
+  // -------------------------------------------------------------------------
+  useBarcodeScanner({
+    inputRef: searchInputRef,
+    onScan: (result) => {
+      const targetRut = result.found ? result.formatted : result.raw;
+      if (targetRut) {
+        setSearchTerm(targetRut);
+      }
+    }
+  });
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    // Si la pistola de escáner escribió directo en el input un URL o cadena de carnet
+    const scanResult = extractRutFromScan(val);
+    if (scanResult.found && (val.includes('RUN=') || val.includes('sidiv') || val.length >= 22)) {
+      setSearchTerm(scanResult.formatted);
+      return;
+    }
+    setSearchTerm(val);
+  };
+
+  const handleSearchPaste = (e) => {
+    const text = e.clipboardData.getData('text');
+    const scanResult = extractRutFromScan(text);
+    if (scanResult.found) {
+      e.preventDefault();
+      setSearchTerm(scanResult.formatted);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const scanResult = extractRutFromScan(searchTerm);
+      if (scanResult.found && scanResult.formatted !== searchTerm) {
+        setSearchTerm(scanResult.formatted);
+      }
+    }
+  };
 
   // Sede seleccionada para filtrar (solo admins y coordinadores pueden cambiarla)
   const [selectedBranch, setSelectedBranch] = useState('Todas las Sedes');
@@ -120,8 +165,16 @@ const Directory = () => {
 
       // Filtro 2: búsqueda por texto (Nombre, Carrera, RUT o ID)
       if (!searchTerm.trim()) return true;
-      const term = searchTerm.toLowerCase();
+      const term = searchTerm.toLowerCase().trim();
+      const cleanSearch = validationService.cleanRut(term);
+
+      // Si la búsqueda contiene al menos 3 caracteres alfanuméricos de RUT,
+      // comparamos también contra el RUT normalizado del alumno (con o sin puntos/guión)
+      const studentCleanRut = validationService.cleanRut(student.rut || student.id || '');
+      const rutMatches = cleanSearch.length >= 3 && studentCleanRut.includes(cleanSearch);
+
       return (
+        rutMatches ||
         (student.name && student.name.toLowerCase().includes(term)) ||
         (student.grade && student.grade.toLowerCase().includes(term)) ||
         (student.rut && student.rut.toLowerCase().includes(term)) ||
@@ -221,13 +274,28 @@ const Directory = () => {
           <div className="search-bar glass-panel">
             <Search className="search-icon" size={20} />
             <input
+              ref={searchInputRef}
               id="directory-search-input"
               type="text"
               placeholder="Buscar por nombre, RUT o carrera..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
+              onPaste={handleSearchPaste}
+              onKeyDown={handleSearchKeyDown}
               className="search-input"
+              autoComplete="off"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="search-clear-btn"
+                title="Limpiar búsqueda"
+                aria-label="Limpiar búsqueda"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
 
           {/* Selector de sede — sólo visible para admin y coordinador */}

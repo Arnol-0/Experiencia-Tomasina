@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import BaseModal from './BaseModal';
 import { Search, Edit2, Check, X, User, ArrowRight } from 'lucide-react';
 import CustomSelect from '../CustomSelect';
@@ -6,6 +6,7 @@ import { useData } from '../../context/DataContext';
 import { validationService } from '../../services/validationService';
 import { isGlobalUser } from '../../utils/permissions';
 import { branchOptions } from '../../constants/branches';
+import { extractRutFromScan, useBarcodeScanner } from '../../utils/scanner';
 
 
 const instOptions = [
@@ -48,14 +49,54 @@ const SearchEditStudentModal = ({ isOpen, onClose, user }) => {
     ? studentsList 
     : studentsList.filter(s => s.branch === user?.branch);
 
-  // 3. Filtro en Tiempo Real:
-  // Si el usuario escribe al menos 2 caracteres, busca coincidencias en nombre o RUT (máximo 10 resultados).
+  const searchInputRef = useRef(null);
+
+  // 3. Filtro en Tiempo Real con soporte normalizado de RUT
   const filteredStudents = searchTerm.trim().length > 1 
-    ? relevantStudents.filter(s => 
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (s.rut && s.rut.toLowerCase().includes(searchTerm.toLowerCase()))
-      ).slice(0, 10)
+    ? relevantStudents.filter(s => {
+        const term = searchTerm.toLowerCase().trim();
+        const cleanTerm = validationService.cleanRut(term);
+        const rutMatches = cleanTerm.length >= 3 && validationService.cleanRut(s.rut || s.id || '').includes(cleanTerm);
+        return (
+          rutMatches ||
+          (s.name && s.name.toLowerCase().includes(term)) || 
+          (s.rut && s.rut.toLowerCase().includes(term))
+        );
+      }).slice(0, 10)
     : [];
+
+  // Escucha de pistola de escáner cuando el modal está abierto en búsqueda
+  useBarcodeScanner({
+    enabled: isOpen && !editingStudent,
+    inputRef: searchInputRef,
+    onScan: (result) => {
+      const targetRut = result.found ? result.formatted : result.raw;
+      if (!targetRut) return;
+
+      setSearchTerm(targetRut);
+
+      const clean = result.clean || validationService.cleanRut(targetRut);
+      const matched = relevantStudents.find(s => validationService.cleanRut(s.rut || s.id) === clean);
+      if (matched) {
+        handleSelectStudent(matched);
+      }
+    }
+  });
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    const scanResult = extractRutFromScan(val);
+    if (scanResult.found && (val.includes('RUN=') || val.includes('sidiv') || val.length >= 22)) {
+      setSearchTerm(scanResult.formatted);
+      const clean = scanResult.clean;
+      const matched = relevantStudents.find(s => validationService.cleanRut(s.rut || s.id) === clean);
+      if (matched) {
+        handleSelectStudent(matched);
+      }
+      return;
+    }
+    setSearchTerm(val);
+  };
 
   // 4. Selecciona un estudiante para abrir su formulario de edición
   const handleSelectStudent = (student) => {
@@ -140,12 +181,24 @@ const SearchEditStudentModal = ({ isOpen, onClose, user }) => {
           <div className="search-bar glass-panel" style={{ margin: 0 }}>
             <Search className="search-icon" size={20} />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Buscar por Nombre o RUT..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="search-input"
+              autoComplete="off"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="search-clear-btn"
+                title="Limpiar búsqueda"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
           
           {/* Lista de resultados encontrados */}
