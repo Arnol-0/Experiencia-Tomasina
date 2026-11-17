@@ -52,23 +52,21 @@ const Directory = () => {
   // -------------------------------------------------------------------------
   useBarcodeScanner({
     inputRef: searchInputRef,
+    enabled: !editingStudent,
     onScan: (result) => {
       const targetRut = result.found ? result.formatted : result.raw;
       if (targetRut) {
         setSearchTerm(targetRut);
+        setCurrentPage(1);
+        if (searchInputRef?.current) {
+          searchInputRef.current.value = targetRut;
+        }
       }
     }
   });
 
   const handleSearchChange = (e) => {
-    const val = e.target.value;
-    // Si la pistola de escáner escribió directo en el input un URL o cadena de carnet
-    const scanResult = extractRutFromScan(val);
-    if (scanResult.found && (val.includes('RUN=') || val.includes('sidiv') || val.length >= 22)) {
-      setSearchTerm(scanResult.formatted);
-      return;
-    }
-    setSearchTerm(val);
+    setSearchTerm(e.target.value);
   };
 
   const handleSearchPaste = (e) => {
@@ -77,6 +75,10 @@ const Directory = () => {
     if (scanResult.found) {
       e.preventDefault();
       setSearchTerm(scanResult.formatted);
+      setCurrentPage(1);
+      if (searchInputRef?.current) {
+        searchInputRef.current.value = scanResult.formatted;
+      }
     }
   };
 
@@ -85,6 +87,7 @@ const Directory = () => {
       const scanResult = extractRutFromScan(searchTerm);
       if (scanResult.found && scanResult.formatted !== searchTerm) {
         setSearchTerm(scanResult.formatted);
+        setCurrentPage(1);
       }
     }
   };
@@ -171,7 +174,12 @@ const Directory = () => {
       // Si la búsqueda contiene al menos 3 caracteres alfanuméricos de RUT,
       // comparamos también contra el RUT normalizado del alumno (con o sin puntos/guión)
       const studentCleanRut = validationService.cleanRut(student.rut || student.id || '');
-      const rutMatches = cleanSearch.length >= 3 && studentCleanRut.includes(cleanSearch);
+      const cleanSearchNoZero = cleanSearch.replace(/^0+/, '');
+      const studentCleanNoZero = studentCleanRut.replace(/^0+/, '');
+      const rutMatches = cleanSearch.length >= 3 && (
+        studentCleanRut.includes(cleanSearch) ||
+        (cleanSearchNoZero.length >= 3 && studentCleanNoZero.includes(cleanSearchNoZero))
+      );
 
       return (
         rutMatches ||

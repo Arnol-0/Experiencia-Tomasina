@@ -74,9 +74,15 @@ const SearchEditStudentModal = ({ isOpen, onClose, user }) => {
       if (!targetRut) return;
 
       setSearchTerm(targetRut);
+      if (searchInputRef?.current) {
+        searchInputRef.current.value = targetRut;
+      }
 
-      const clean = result.clean || validationService.cleanRut(targetRut);
-      const matched = relevantStudents.find(s => validationService.cleanRut(s.rut || s.id) === clean);
+      const clean = (result.clean || validationService.cleanRut(targetRut)).replace(/^0+/, '');
+      const matched = relevantStudents.find(s => {
+        const studentClean = validationService.cleanRut(s.rut || s.id || '').replace(/^0+/, '');
+        return studentClean && studentClean === clean;
+      });
       if (matched) {
         handleSelectStudent(matched);
       }
@@ -84,18 +90,27 @@ const SearchEditStudentModal = ({ isOpen, onClose, user }) => {
   });
 
   const handleSearchChange = (e) => {
-    const val = e.target.value;
-    const scanResult = extractRutFromScan(val);
-    if (scanResult.found && (val.includes('RUN=') || val.includes('sidiv') || val.length >= 22)) {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchPaste = (e) => {
+    const text = e.clipboardData.getData('text');
+    const scanResult = extractRutFromScan(text);
+    if (scanResult.found) {
+      e.preventDefault();
       setSearchTerm(scanResult.formatted);
-      const clean = scanResult.clean;
-      const matched = relevantStudents.find(s => validationService.cleanRut(s.rut || s.id) === clean);
+      if (searchInputRef?.current) {
+        searchInputRef.current.value = scanResult.formatted;
+      }
+      const clean = scanResult.clean.replace(/^0+/, '');
+      const matched = relevantStudents.find(s => {
+        const studentClean = validationService.cleanRut(s.rut || s.id || '').replace(/^0+/, '');
+        return studentClean && studentClean === clean;
+      });
       if (matched) {
         handleSelectStudent(matched);
       }
-      return;
     }
-    setSearchTerm(val);
   };
 
   // 4. Selecciona un estudiante para abrir su formulario de edición
@@ -186,6 +201,7 @@ const SearchEditStudentModal = ({ isOpen, onClose, user }) => {
               placeholder="Buscar por Nombre o RUT..."
               value={searchTerm}
               onChange={handleSearchChange}
+              onPaste={handleSearchPaste}
               className="search-input"
               autoComplete="off"
             />
