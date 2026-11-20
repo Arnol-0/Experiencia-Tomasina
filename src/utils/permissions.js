@@ -30,14 +30,63 @@ export const ROLES = {
 const normalizeBranch = (branch) => String(branch || '').trim().toLowerCase();
 
 /**
+ * Extrae y normaliza el rol del usuario desde cualquier campo posible
+ * (role, rol, userRole, tipo) y cualquier variante de string.
+ * Devuelve un string limpio en minúsculas, sin acentos, sin espacios (reemplazados por _).
+ *
+ * Ejemplos:
+ *   "Director DAE"  → "director_dae"
+ *   "director"      → "director"
+ *   "Director"      → "director"
+ *   "DIRECTOR_DAE"  → "director_dae"
+ *   "coordinador"   → "coordinador"
+ *   "Asistente DAE" → "asistente_dae"
+ *   "admin"         → "admin"
+ */
+export const extractRole = (user) => {
+  if (!user) return '';
+  const raw = user.role || user.rol || user.userRole || user.tipo || '';
+  if (typeof raw !== 'string') return '';
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // quitar acentos
+    .replace(/[\s-]+/g, '_');          // espacios/guiones → underscore
+};
+
+/**
  * 1. ¿El rol recibido es coordinador?
  */
-export const isCoordinator = (user) => user?.role === ROLES.COORDINATOR;
+export const isCoordinator = (user) => {
+  const r = extractRole(user);
+  return r === ROLES.COORDINATOR || r.includes('coordinador') || r.includes('coord');
+};
 
 /**
  * 2. ¿El rol recibido es administrador del sistema?
  */
-export const isAdmin = (user) => user?.role === ROLES.ADMIN;
+export const isAdmin = (user) => {
+  const r = extractRole(user);
+  return r === ROLES.ADMIN || r.includes('admin');
+};
+
+/**
+ * 2b. ¿El rol recibido es Director DAE?
+ * Detecta: 'director_dae', 'director', 'Director DAE', 'Director', 'dae', etc.
+ */
+export const isDirector = (user) => {
+  const r = extractRole(user);
+  return r === ROLES.DIRECTOR || r === 'director' || r.includes('director') || r === 'dae';
+};
+
+/**
+ * 2c. ¿El rol recibido es Asistente DAE?
+ */
+export const isAssistant = (user) => {
+  const r = extractRole(user);
+  return r === ROLES.ASSISTANT || r.includes('asistente');
+};
 
 /**
  * 3. ¿Este usuario tiene alcance NACIONAL (ve todas las sedes)?
@@ -55,6 +104,11 @@ export const isNationalScope = (user) => {
   if (!branch) return true;
   return NATIONAL_BRANCH_ALIASES.includes(branch);
 };
+
+/**
+ * Helper interno: ¿el rol normalizado del usuario coincide con alguno de los dados?
+ */
+const hasAnyRole = (user, ...checkers) => checkers.some(fn => fn(user));
 
 /**
  * 4. ¿Esta SEDE (como texto) representa el alcance nacional?
@@ -81,7 +135,12 @@ export const isGlobalUser = (user) => isNationalScope(user);
  * una sede concreta, se le asigna 'Todas las Sedes'.
  */
 export const resolveBranchForRole = (role, branch) => {
-  if (role === ROLES.COORDINATOR || role === ROLES.ADMIN) {
+  // Normalizar el rol recibido para manejar variantes ('Director DAE', 'coordinador', etc.)
+  const normalized = typeof role === 'string'
+    ? role.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s-]+/g, '_')
+    : '';
+  if (normalized === ROLES.COORDINATOR || normalized.includes('coordinador') || normalized.includes('coord') ||
+      normalized === ROLES.ADMIN || normalized.includes('admin')) {
     return NATIONAL_BRANCH;
   }
   return String(branch || '').trim();
@@ -91,33 +150,23 @@ export const resolveBranchForRole = (role, branch) => {
  * 7. ¿Este usuario puede administrar (crear/editar/borrar) estudiantes?
  */
 export const canManageStudents = (user) =>
-  user?.role === ROLES.ADMIN ||
-  user?.role === ROLES.COORDINATOR ||
-  user?.role === ROLES.DIRECTOR;
+  isAdmin(user) || isCoordinator(user) || isDirector(user);
 
 /**
  * 8. ¿Este usuario puede desbloquear pines en el perfil de un estudiante?
  */
 export const canUnlockPins = (user) =>
-  user?.role === ROLES.ADMIN ||
-  user?.role === ROLES.COORDINATOR ||
-  user?.role === ROLES.DIRECTOR ||
-  user?.role === ROLES.ASSISTANT;
+  isAdmin(user) || isCoordinator(user) || isDirector(user) || isAssistant(user);
 
 /**
  * 9. ¿Este usuario puede entregar/activar credenciales físicas (lanyard, pasaporte)?
  */
 export const canDeliverCredentials = (user) =>
-  user?.role === ROLES.ADMIN ||
-  user?.role === ROLES.COORDINATOR ||
-  user?.role === ROLES.DIRECTOR ||
-  user?.role === ROLES.ASSISTANT;
+  isAdmin(user) || isCoordinator(user) || isDirector(user) || isAssistant(user);
 
 /**
  * 10. ¿Este usuario puede gestionar (bloquear, desbloquear directamente, habilitar o revocar) pines y credenciales?
  * Aplica para Admin, Coordinador y Director DAE.
  */
 export const canManagePinStatus = (user) =>
-  user?.role === ROLES.ADMIN ||
-  user?.role === ROLES.COORDINATOR ||
-  user?.role === ROLES.DIRECTOR;
+  isAdmin(user) || isCoordinator(user) || isDirector(user);

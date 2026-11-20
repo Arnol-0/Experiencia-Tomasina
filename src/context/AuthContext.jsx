@@ -3,7 +3,7 @@ import { auth, db } from '../firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { NATIONAL_BRANCH } from '../constants/branches';
-import { ROLES, resolveBranchForRole } from '../utils/permissions';
+import { ROLES, resolveBranchForRole, isAdmin, isCoordinator } from '../utils/permissions';
 
 /**
  * ============================================================================
@@ -33,13 +33,15 @@ const buildSessionUser = (currentUser, profile = {}) => ({
 
 const isProfileIncomplete = (profile) => {
   if (!profile) return true;
-  if (profile.role === ROLES.ADMIN) return false;
+  // Usar los helpers normalizados para detectar roles de forma robusta
+  const fakeUser = { role: profile.role, rol: profile.rol };
+  if (isAdmin(fakeUser)) return false;
 
   const hasName = Boolean(String(profile.name || '').trim());
   const hasRole = Boolean(String(profile.role || '').trim());
 
   // El coordinador es nacional: NO necesita sede asignada.
-  if (profile.role === ROLES.COORDINATOR) {
+  if (isCoordinator(fakeUser)) {
     return !hasName || !hasRole;
   }
 

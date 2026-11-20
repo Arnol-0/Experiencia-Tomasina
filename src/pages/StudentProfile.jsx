@@ -51,6 +51,7 @@ const StudentProfile = () => {
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isProcessingTermo, setIsProcessingTermo] = useState(false);
+  const [pinManageError, setPinManageError] = useState('');
 
   // Entregas optimistas de credenciales
   const [pendingCredentials, setPendingCredentials] = useState({});
@@ -103,6 +104,7 @@ const StudentProfile = () => {
     if (canManagePins) {
       setSelectedPin(pin);
       setSelectedActivities([]);
+      setPinManageError('');
       return;
     }
 
@@ -111,6 +113,7 @@ const StudentProfile = () => {
       if (!collectedPins.includes(pin.id) && availablePins.includes(pin.id)) {
         setSelectedPin(pin);
         setSelectedActivities([]);
+        setPinManageError('');
       }
     }
   };
@@ -144,6 +147,7 @@ const StudentProfile = () => {
       setSelectedPin(null);
     } catch (error) {
       console.error('Error al desbloquear pin:', error);
+      setPinManageError('No se pudo desbloquear el pin. Revisa tu conexión e inténtalo nuevamente.');
     } finally {
       setIsUnlocking(false);
     }
@@ -180,6 +184,7 @@ const StudentProfile = () => {
       setSelectedPin(null);
     } catch (err) {
       console.error('Error en desbloqueo directo:', err);
+      setPinManageError('No se pudo desbloquear directamente. Revisa tu conexión e inténtalo nuevamente.');
     } finally {
       setIsUnlocking(false);
     }
@@ -206,6 +211,7 @@ const StudentProfile = () => {
       setSelectedPin(null);
     } catch (err) {
       console.error('Error al habilitar pin disponible:', err);
+      setPinManageError('No se pudo habilitar como disponible. Revisa tu conexión e inténtalo nuevamente.');
     } finally {
       setIsUnlocking(false);
     }
@@ -232,6 +238,7 @@ const StudentProfile = () => {
       setSelectedPin(null);
     } catch (err) {
       console.error('Error al bloquear pin:', err);
+      setPinManageError('No se pudo bloquear el pin. Revisa tu conexión e inténtalo nuevamente.');
     } finally {
       setIsUnlocking(false);
     }
@@ -258,6 +265,7 @@ const StudentProfile = () => {
       setSelectedPin(null);
     } catch (err) {
       console.error('Error al mover pin a disponible:', err);
+      setPinManageError('No se pudo mover el pin. Revisa tu conexión e inténtalo nuevamente.');
     } finally {
       setIsUnlocking(false);
     }
@@ -506,6 +514,27 @@ const StudentProfile = () => {
               <X size={24} />
             </button>
 
+            {/* Banner de error visible para operaciones fallidas */}
+            {pinManageError && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.75rem 1rem', marginBottom: '1rem',
+                borderRadius: '0.5rem', background: '#fef2f2',
+                border: '1px solid #fecaca', color: '#dc2626',
+                fontSize: '0.9rem'
+              }}>
+                <AlertTriangle size={16} />
+                <span>{pinManageError}</span>
+                <button
+                  type="button"
+                  onClick={() => setPinManageError('')}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* CASO A: Pin YA OBTENIDO (Gestión administrativa) */}
             {collectedPins.includes(selectedPin.id) ? (
               <div className="pin-admin-manage-section">
@@ -683,15 +712,29 @@ const StudentProfile = () => {
                 </button>
 
                 {canManagePins && (
-                  <div className="admin-modal-footer">
-                    <button
-                      type="button"
-                      className="btn-admin-danger-text"
-                      onClick={() => handleLockPin(selectedPin.id)}
-                      disabled={isUnlocking}
-                    >
-                      <Lock size={15} /> Volver a Bloquear Pin (Gestión)
-                    </button>
+                  <div className="admin-actions-group" style={{ marginTop: '1rem' }}>
+                    <p className="admin-action-hint">
+                      Gestión administrativa directa:
+                    </p>
+                    <div className="admin-buttons-row">
+                      <button
+                        type="button"
+                        className="btn-admin-primary"
+                        onClick={() => handleDirectUnlockPin(selectedPin.id)}
+                        disabled={isUnlocking}
+                      >
+                        <Sparkles size={16} />
+                        <span>Desbloquear Directamente</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-danger-text"
+                        onClick={() => handleLockPin(selectedPin.id)}
+                        disabled={isUnlocking}
+                      >
+                        <Lock size={15} /> Volver a Bloquear Pin
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
