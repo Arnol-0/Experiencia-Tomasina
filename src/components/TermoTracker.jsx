@@ -179,17 +179,17 @@ const TermoTracker = ({
             </div>
           </div>
 
-          {/* Opción administrativa para coordinadores y administradores */}
+          {/* Opción administrativa para coordinadores, administradores y directores DAE */}
           {canManage && typeof onRevoke === 'function' && (
             <button
               type="button"
               className="termo-revoke-btn"
               onClick={onRevoke}
               disabled={isProcessing}
-              title="Permite al admin/coordinador revertir el estado del termo si fue entregado por equivocación"
+              title="Permite revertir el estado del termo si fue entregado por equivocación"
             >
               <RotateCcw size={14} />
-              <span>Revertir entrega (Admin)</span>
+              <span>Revertir entrega (Gestión)</span>
             </button>
           )}
         </div>

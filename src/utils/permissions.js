@@ -112,3 +112,12 @@ export const canDeliverCredentials = (user) =>
   user?.role === ROLES.COORDINATOR ||
   user?.role === ROLES.DIRECTOR ||
   user?.role === ROLES.ASSISTANT;
+
+/**
+ * 10. ¿Este usuario puede gestionar (bloquear, desbloquear directamente, habilitar o revocar) pines y credenciales?
+ * Aplica para Admin, Coordinador y Director DAE.
+ */
+export const canManagePinStatus = (user) =>
+  user?.role === ROLES.ADMIN ||
+  user?.role === ROLES.COORDINATOR ||
+  user?.role === ROLES.DIRECTOR;

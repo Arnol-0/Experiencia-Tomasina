@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { CREDENTIAL_CATALOG } from '../constants/credentials';
 import { isCredentialDelivered, buildCredentialsMap } from '../utils/credentials';
-import { canUnlockPins, canDeliverCredentials, isAdmin, isCoordinator } from '../utils/permissions';
+import { canUnlockPins, canDeliverCredentials, canManagePinStatus } from '../utils/permissions';
 import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './StudentProfile.css';
 
@@ -40,11 +40,11 @@ const StudentProfile = () => {
   const { studentsList, updateStudent } = useData();
   const student = studentsList.find(s => s.id === id);
 
-  // 3. Usuario de la sesión y permisos granulares
+  // 3. Usuario de la sesión y permisos granulares (Admin, Coordinador y Director DAE pueden gestionar pines)
   const { user } = useAuth();
   const canDeliver = canDeliverCredentials(user);
   const canUnlock = canUnlockPins(user);
-  const canManagePins = isAdmin(user) || isCoordinator(user);
+  const canManagePins = canManagePinStatus(user);
 
   // Estados locales para el modal de desbloqueo y gestión de pines
   const [selectedPin, setSelectedPin] = useState(null);
@@ -391,8 +391,8 @@ const StudentProfile = () => {
             <Award className="section-icon" />
             <h2>Colección</h2>
             {canManagePins && (
-              <span className="admin-badge-indicator" title="Eres Admin/Coordinador: puedes hacer clic en cualquier pin para bloquearlo o desbloquearlo">
-                <ShieldCheck size={16} /> Modo Gestión (Admin)
+              <span className="admin-badge-indicator" title="Eres Admin, Coordinador o Director DAE: puedes hacer clic en cualquier pin para bloquearlo o desbloquearlo">
+                <ShieldCheck size={16} /> Modo Gestión (DAE)
               </span>
             )}
           </div>
@@ -545,7 +545,7 @@ const StudentProfile = () => {
                 {canManagePins && (
                   <div className="admin-actions-group">
                     <p className="admin-action-hint">
-                      Como Administrador o Coordinador, puedes revocar o cambiar el estado de este pin:
+                      Como Administrador, Coordinador o Director DAE, puedes revocar o cambiar el estado de este pin:
                     </p>
                     <div className="admin-buttons-row">
                       <button
@@ -690,7 +690,7 @@ const StudentProfile = () => {
                       onClick={() => handleLockPin(selectedPin.id)}
                       disabled={isUnlocking}
                     >
-                      <Lock size={15} /> Volver a Bloquear Pin (Admin)
+                      <Lock size={15} /> Volver a Bloquear Pin (Gestión)
                     </button>
                   </div>
                 )}
