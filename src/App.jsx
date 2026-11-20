@@ -7,6 +7,7 @@ import StudentProfile from './pages/StudentProfile';
 import Login from './pages/Login';
 import ErrorBoundary from './components/ErrorBoundary';
 import CompleteStaffProfile from './components/CompleteStaffProfile';
+import VersionNotice from './components/VersionNotice';
 
 /**
  * ============================================================================
@@ -51,6 +52,7 @@ function App() {
       <Router>
         <div className="app-layout">
           {!needsProfile && <Navbar />}
+          <VersionNotice />
           <main>
             <Routes>
               <Route path="/login" element={<Login />} />

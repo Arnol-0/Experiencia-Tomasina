@@ -1,0 +1,236 @@
+/* ==========================================================================
+   COMPONENTE: VersionNotice — Notificación de nueva versión
+   ========================================================================== */
+
+/* --- Overlay semi-transparente con blur --- */
+.version-notice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 1rem;
+}
+
+/* --- Modal principal --- */
+.version-notice-modal {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--color-surface, #ffffff);
+  border-radius: 1.25rem;
+  box-shadow:
+    0 25px 60px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(27, 94, 32, 0.08);
+  padding: 2rem 1.75rem 1.5rem;
+}
+
+/* Animación de entrada */
+.version-notice-modal.animate-in {
+  animation: vn-pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes vn-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Animación de salida */
+.version-notice-modal.animate-out {
+  animation: vn-pop-out 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+@keyframes vn-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(20px);
+  }
+}
+
+/* --- Botón de cierre --- */
+.version-notice-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary-light, #e6f2ec);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.version-notice-close:hover {
+  background: var(--border-color, #e2e8f0);
+  color: var(--text-main, #1e293b);
+  transform: rotate(90deg);
+}
+
+/* --- Cabecera --- */
+.version-notice-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+/* Badge de versión con brillo */
+.version-badge-glow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 1rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--color-primary, #1b5e20), var(--color-secondary, #4caf50));
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 2px 12px rgba(27, 94, 32, 0.35);
+  animation: vn-badge-pulse 2.5s ease-in-out infinite;
+}
+@keyframes vn-badge-pulse {
+  0%, 100% { box-shadow: 0 2px 12px rgba(27, 94, 32, 0.35); }
+  50% { box-shadow: 0 4px 24px rgba(27, 94, 32, 0.55); }
+}
+.version-sparkle-icon {
+  animation: vn-sparkle-rotate 3s linear infinite;
+}
+@keyframes vn-sparkle-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.version-badge-text {
+  font-family: 'Outfit', sans-serif;
+}
+
+.version-notice-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  margin: 0.5rem 0 0.25rem;
+  line-height: 1.3;
+}
+
+.version-notice-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-primary, #1b5e20);
+  font-weight: 600;
+  margin: 0 0 0.3rem;
+}
+
+.version-notice-date {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+}
+
+/* --- Lista de cambios --- */
+.version-notice-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1.5rem;
+}
+
+.version-change-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  background: var(--color-bg, #f8faf9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  transition: all 0.25s ease;
+  animation: vn-item-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+@keyframes vn-item-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.version-change-item:hover {
+  border-color: var(--color-secondary, #4caf50);
+  background: var(--color-primary-light, #e6f2ec);
+  transform: translateX(4px);
+}
+
+.version-change-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.version-change-text {
+  font-size: 0.88rem;
+  color: var(--text-main, #1e293b);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* --- Botón CTA --- */
+.version-notice-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, var(--color-primary, #1b5e20), var(--color-secondary, #4caf50));
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 14px rgba(27, 94, 32, 0.3);
+}
+.version-notice-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(27, 94, 32, 0.45);
+}
+.version-notice-cta:active {
+  transform: translateY(0);
+}
+
+/* --- Responsive --- */
+@media (max-width: 520px) {
+  .version-notice-modal {
+    padding: 1.5rem 1.25rem 1.25rem;
+    border-radius: 1rem;
+  }
+  .version-notice-title {
+    font-size: 1.25rem;
+  }
+  .version-change-item {
+    padding: 0.6rem 0.7rem;
+  }
+  .version-change-text {
+    font-size: 0.82rem;
+  }
+}
