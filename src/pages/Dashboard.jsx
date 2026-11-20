@@ -30,16 +30,16 @@ const roleOptions = [
 const Dashboard = () => {
   const { user } = useAuth();
   const { studentsList, isLoadingStudents, addStudents, batchUpdateStudents, updateStudent, deleteStudent, deleteStudentsByBranch } = useData();
-  
+
   const [newBranch, setNewBranch] = useState('Arica');
   const [message, setMessage] = useState('');
-  
+
   const [staffList, setStaffList] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportStudentsModal, setShowImportStudentsModal] = useState(false);
   const [importBranch, setImportBranch] = useState('Auto');
-  
+
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showSearchEditStudentModal, setShowSearchEditStudentModal] = useState(false);
   const [showDeleteStudentModal, setShowDeleteStudentModal] = useState(false);
@@ -80,17 +80,17 @@ const Dashboard = () => {
   // igual que el admin. Se resuelve con el helper centralizado de permisos.
   const isGlobal = isGlobalUser(user);
   const displayBranch = isGlobal ? 'Todas las Sedes' : (user?.branch || 'Sin Sede');
-  
-  const relevantStudents = isGlobal 
-    ? studentsList 
+
+  const relevantStudents = isGlobal
+    ? studentsList
     : studentsList.filter(s => s.branch === user?.branch);
-  
+
   const studentsCount = relevantStudents.length;
   const pinsCount = relevantStudents.reduce((acc, curr) => acc + (curr.collectedPins?.length || 0), 0);
 
   const branchBreakdown = isGlobal ? (() => {
     const breakdown = {};
-    
+
     staffList.forEach(staff => {
       if (typeof staff.branch === 'string' && !isNationalScopeBranch(staff.branch)) {
         breakdown[staff.branch] = 0;
@@ -117,7 +117,7 @@ const Dashboard = () => {
     setMessage('');
     const fileInput = document.getElementById('student-file-input');
     const file = fileInput?.files[0];
-    
+
     // Validación previa de archivo
     const fileValidation = validationService.validateExcelFile(file);
     if (!fileValidation.isValid) {
@@ -140,7 +140,7 @@ const Dashboard = () => {
       const newStudents = structureValidation.validRows.map((row, index) => ({
         ...row,
         avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(row.name || index)}&backgroundColor=e6f2ec`,
-        collectedPins: [], 
+        collectedPins: [],
         availablePins: [],
         journeyEvents: [
           { date: new Date().toISOString(), title: 'Ingreso al Sistema', description: 'Registro creado mediante importación masiva.' }
@@ -149,7 +149,7 @@ const Dashboard = () => {
 
       // 4. Ingesta en Firestore
       await addStudents(newStudents);
-      
+
       let msg = `¡Éxito! Se importaron ${newStudents.length} estudiantes correctamente ${importBranch === 'Auto' ? 'con detección automática de sede' : `a la sede ${importBranch}`}.`;
       if (structureValidation.invalidCount > 0) {
         msg += ` (${structureValidation.invalidCount} filas incompletas omitidas).`;
@@ -371,7 +371,7 @@ const Dashboard = () => {
       branch: assignedBranch,
       institutionType: newStudentInstType,
       bio: 'Estudiante Tomasino',
-      collectedPins: [], 
+      collectedPins: [],
       availablePins: [],
       journeyEvents: [
         { date: new Date().toISOString(), title: 'Ingreso Manual', description: 'Registro creado manualmente en el sistema.' }
@@ -435,7 +435,7 @@ const Dashboard = () => {
             </span>
           </div>
         </div>
-        
+
         <div className="stat-card glass-panel">
           <div className="stat-icon-wrapper"><Award className="stat-icon" size={28} /></div>
           <div className="stat-content">
@@ -451,13 +451,13 @@ const Dashboard = () => {
       </div>
 
       {message && (
-        <div style={{ 
-          background: unmatchedData?.rows?.length > 0 ? '#fffbeb' : '#dcfce7', 
-          color: unmatchedData?.rows?.length > 0 ? '#92400e' : '#166534', 
+        <div style={{
+          background: unmatchedData?.rows?.length > 0 ? '#fffbeb' : '#dcfce7',
+          color: unmatchedData?.rows?.length > 0 ? '#92400e' : '#166534',
           border: unmatchedData?.rows?.length > 0 ? '1px solid #fde68a' : '1px solid #bbf7d0',
-          padding: '1rem 1.25rem', 
-          borderRadius: '0.75rem', 
-          marginBottom: '2rem', 
+          padding: '1rem 1.25rem',
+          borderRadius: '0.75rem',
+          marginBottom: '2rem',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -492,7 +492,7 @@ const Dashboard = () => {
       )}
 
       <div className="dashboard-main-grid">
-        <SidebarActions 
+        <SidebarActions
           user={user}
           isGlobal={isGlobal}
           onAddStudent={() => setShowAddStudentModal(true)}
@@ -534,7 +534,7 @@ const Dashboard = () => {
               <X size={24} />
             </button>
             <h2 className="modal-title text-gradient">Detalles de Sede: {selectedBranch}</h2>
-            
+
             <div className="modal-stats-row">
               <div className="modal-stat-box">
                 <Users size={20} className="modal-stat-icon" />
@@ -590,9 +590,9 @@ const Dashboard = () => {
 
             {user?.role !== ROLES.ASSISTANT && (
               <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                <button 
+                <button
                   onClick={handleDeleteBranchStudents}
-                  className="create-btn" 
+                  className="create-btn"
                   style={{ background: '#ef4444', borderColor: '#ef4444', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center' }}
                 >
                   <Trash2 size={20} />
@@ -614,15 +614,15 @@ const Dashboard = () => {
               <Upload size={24} color="var(--color-primary)" />
               <h2>Importar Estudiantes</h2>
             </div>
-            
+
             <form onSubmit={handleImportStudents} className="create-user-form">
               <div className="form-group">
                 <label>Sede Destino</label>
-                <CustomSelect 
-                  value={importBranch} 
-                  onChange={setImportBranch} 
-                  options={[{ value: 'Auto', label: 'Automático (Detectar en Excel)' }, ...branchOptions]} 
-                  placeholder="Seleccionar Sede Destino" 
+                <CustomSelect
+                  value={importBranch}
+                  onChange={setImportBranch}
+                  options={[{ value: 'Auto', label: 'Automático (Detectar en Excel)' }, ...branchOptions]}
+                  placeholder="Seleccionar Sede Destino"
                 />
               </div>
 
@@ -638,7 +638,7 @@ const Dashboard = () => {
                   ¿No tienes el formato? Descargar plantilla de estudiantes
                 </a>
               </div>
-              
+
               <button type="submit" className="create-btn" style={{ marginTop: '1rem', width: '100%', justifyContent: 'center' }}>Procesar Archivo</button>
             </form>
           </div>
@@ -646,7 +646,7 @@ const Dashboard = () => {
       )}
 
       {showCreateModal && isGlobal && (
-        <CreateUserModal 
+        <CreateUserModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           onCreated={fetchStaff}
@@ -656,7 +656,7 @@ const Dashboard = () => {
       )}
 
       {showSystemUsersModal && isGlobal && (
-        <ManageUsersModal 
+        <ManageUsersModal
           isOpen={showSystemUsersModal}
           onClose={() => setShowSystemUsersModal(false)}
           staffList={staffList}
@@ -667,7 +667,7 @@ const Dashboard = () => {
       )}
 
       {showSearchEditStudentModal && isGlobal && (
-        <SearchEditStudentModal 
+        <SearchEditStudentModal
           isOpen={showSearchEditStudentModal}
           onClose={() => setShowSearchEditStudentModal(false)}
           user={user}
@@ -684,33 +684,33 @@ const Dashboard = () => {
               <UserPlus size={24} color="var(--color-primary)" />
               <h2>Agregar Estudiante</h2>
             </div>
-            
+
             <form onSubmit={handleAddStudent} className="create-user-form">
               <div className="form-group">
                 <label translate="no">RUT (opcional)</label>
-                <input type="text" value={newStudentRut} onChange={e=>setNewStudentRut(e.target.value)} placeholder="Ej: 12345678-9" />
+                <input type="text" value={newStudentRut} onChange={e => setNewStudentRut(e.target.value)} placeholder="Ej: 12345678-9" />
               </div>
               <div className="form-group">
                 <label>Nombre Completo</label>
-                <input type="text" value={newStudentName} onChange={e=>setNewStudentName(e.target.value)} required />
+                <input type="text" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} required />
               </div>
               <div className="form-group">
                 <label>Carrera / Grado</label>
-                <input type="text" value={newStudentGrade} onChange={e=>setNewStudentGrade(e.target.value)} required placeholder="Ej: Ingeniería Informática Diurna" />
+                <input type="text" value={newStudentGrade} onChange={e => setNewStudentGrade(e.target.value)} required placeholder="Ej: Ingeniería Informática Diurna" />
               </div>
               <div className="form-group">
                 <label>Tipo de Institución</label>
-                <select value={newStudentInstType} onChange={e=>setNewStudentInstType(e.target.value)} required>
+                <select value={newStudentInstType} onChange={e => setNewStudentInstType(e.target.value)} required>
                   <option value="UST">UST (Universidad Santo Tomás)</option>
                   <option value="IPST">IPST (Instituto Profesional)</option>
                   <option value="CFTST">CFTST (Centro de Formación Técnica)</option>
                 </select>
               </div>
-              
+
               {isGlobal && (
                 <div className="form-group">
                   <label>Sede</label>
-                  <select value={newBranch} onChange={e=>setNewBranch(e.target.value)}>
+                  <select value={newBranch} onChange={e => setNewBranch(e.target.value)}>
                     {ALL_BRANCHES.map(branch => (
                       <option key={branch} value={branch}>{branch}</option>
                     ))}
@@ -733,7 +733,7 @@ const Dashboard = () => {
               <Trash2 size={24} color="#ef4444" />
               <h2 style={{ color: '#ef4444' }}>Eliminar Estudiante</h2>
             </div>
-            
+
             <div className="search-bar glass-panel" style={{ marginBottom: '1.5rem', background: 'var(--color-bg)' }}>
               <Search className="search-icon" size={20} />
               <input
@@ -752,7 +752,7 @@ const Dashboard = () => {
                     <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{student.name}</div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{student.rut || student.id} - {student.branch}</div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleDeleteStudent(student.id)}
                     style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
                     title="Eliminar"
@@ -800,7 +800,7 @@ const Dashboard = () => {
       <footer className="dashboard-footer">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span>Experiencia Tomasina</span>
-          <VersionBubble label="Versión 1.0" placement="top-center" />
+          <VersionBubble label="Versión 1.2" placement="top-center" />
         </div>
       </footer>
     </div>

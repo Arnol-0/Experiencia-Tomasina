@@ -77,10 +77,10 @@ const Login = () => {
     try {
       // Agregamos un pequeño retraso (2 segundos) para que el usuario pueda apreciar la animación visual
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Inversión de dependencias (DIP): Delegamos la autenticación al contexto
       await login(username, password);
-      
+
       // Persistencia de sesión elegida por el usuario:
       if (keepSignedIn) {
         localStorage.setItem('keepSignedIn', 'true'); // Deshabilita el auto-logout por inactividad
@@ -110,7 +110,7 @@ const Login = () => {
     <div className="login-page">
       {/* TARJETA DE LOGIN CON EFECTO VIDRIO (GLASS-PANEL) */}
       <div className="login-container glass-panel animate-fade-in">
-        
+
         {/* Cabecera institucional con Logo */}
         <div className="login-header">
           <img src={logoImg} alt="Experiencia Tomasina" className="login-icon" />
@@ -172,7 +172,7 @@ const Login = () => {
 
         {/* Pie de versión interactivo con burbuja de creador */}
         <div className="login-credits">
-          <VersionBubble label="Versión 1.0" placement="top-center" />
+          <VersionBubble label="Versión 1.2" placement="top-center" />
         </div>
       </div>
     </div>
