@@ -416,7 +416,7 @@ const Dashboard = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
             <h1 className="page-title" style={{ margin: 0 }}>Panel de Control</h1>
-            <VersionBubble label="v1.0" placement="bottom-start" />
+            <VersionBubble label="v1.2" placement="bottom-start" />
           </div>
           <p className="page-subtitle" style={{ margin: 0 }}>Bienvenido, {user.name || user.email} ({displayBranch})</p>
         </div>

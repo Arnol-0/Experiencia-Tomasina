@@ -68,7 +68,7 @@ const VersionNotice = () => {
         const stored = localStorage.getItem(STORAGE_KEY);
         const data = stored ? JSON.parse(stored) : {};
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, dismissed: true }));
-      } catch {}
+      } catch { }
     }, 400);
   };
 
