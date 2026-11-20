@@ -1,0 +1,389 @@
+/* ============================================================================
+   ESTILOS: TermoTracker.css (Visualización del Termo con Paleta Institucional)
+   ============================================================================ */
+
+.termo-tracker-card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-lg, 1rem);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.termo-tracker-card:hover {
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+.termo-tracker-card.goal-reached {
+  border-color: rgba(27, 94, 32, 0.35);
+  box-shadow: 0 4px 16px rgba(27, 94, 32, 0.15);
+}
+
+.termo-tracker-card.is-delivered {
+  border-color: rgba(27, 94, 32, 0.4);
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-primary-light, #e6f2ec) 100%);
+}
+
+/* Cabecera */
+.termo-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.termo-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-primary, #1b5e20);
+}
+
+.termo-trophy-icon {
+  color: #d97706;
+}
+
+.termo-target-pill {
+  background: var(--color-primary-light, #e6f2ec);
+  color: var(--color-primary-dark, #0d3b13);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(27, 94, 32, 0.2);
+}
+
+.termo-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main, #1e293b);
+  margin: 0.25rem 0 0.25rem 0;
+}
+
+.termo-subtitle {
+  font-size: 0.825rem;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+/* Escenario visual del Termo */
+.termo-visual-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0 1.5rem;
+  background: radial-gradient(circle, rgba(230, 242, 236, 0.6) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: var(--radius-md, 0.75rem);
+  margin-bottom: 1.25rem;
+  position: relative;
+}
+
+.termo-stage {
+  position: relative;
+  width: 170px;
+  height: 230px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.termo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Sombra / Silueta */
+.termo-silhouette {
+  filter: brightness(0) opacity(0.18) blur(0.5px);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* Capa de relleno: Revela la imagen real de abajo hacia arriba */
+.termo-fill-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  transition: clip-path 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.termo-filled {
+  filter: drop-shadow(0 4px 10px rgba(27, 94, 32, 0.2));
+}
+
+.termo-tracker-card.goal-reached .termo-filled {
+  filter: drop-shadow(0 0 12px rgba(27, 94, 32, 0.45));
+}
+
+/* Línea de brillo en el nivel del líquido */
+.termo-fill-glow-line {
+  position: absolute;
+  left: 15%;
+  width: 70%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #81c784, #ffffff, #81c784, transparent);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+  border-radius: 9999px;
+  transform: translateY(50%);
+  z-index: 3;
+}
+
+/* Halo festivo institucional */
+.termo-aura-celebration {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.2) 0%, rgba(27, 94, 32, 0.1) 50%, transparent 70%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Píldora de porcentaje */
+.termo-percent-tag {
+  position: absolute;
+  bottom: 0.25rem;
+  right: -0.5rem;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: var(--text-main, #334155);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 4;
+}
+
+.termo-percent-tag.completed {
+  background: var(--color-primary, #1b5e20);
+  color: var(--text-on-primary, #ffffff);
+  border-color: var(--color-primary-dark, #0d3b13);
+  box-shadow: 0 2px 8px rgba(27, 94, 32, 0.35);
+}
+
+/* Indicador de pasos (Puntos 1 a 7) */
+.termo-steps-container {
+  margin-bottom: 1.25rem;
+}
+
+.termo-steps-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.825rem;
+  color: var(--text-main, #334155);
+  margin-bottom: 0.6rem;
+}
+
+.termo-steps-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.termo-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.termo-step-dot.filled {
+  background: var(--color-primary, #1b5e20);
+  border-color: var(--color-primary, #1b5e20);
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(27, 94, 32, 0.3);
+  transform: scale(1.05);
+}
+
+.termo-step-dot.final-step.filled {
+  background: var(--color-primary, #1b5e20);
+  border-color: var(--color-secondary, #4caf50);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
+}
+
+/* Cuadro de estado: en progreso */
+.termo-status-box {
+  background: rgba(241, 245, 249, 0.7);
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 0.85rem;
+  text-align: center;
+}
+
+.termo-status-text {
+  font-size: 0.825rem;
+  color: var(--text-muted, #475569);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ============================================================================
+   ALARMA DE DESBLOQUEO (Mismo color institucional de la página)
+   ============================================================================ */
+
+.termo-alarm-box {
+  background: var(--color-primary-light, #e6f2ec);
+  border: 1.5px solid var(--color-primary, #1b5e20);
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-green, 0 4px 14px 0 rgba(27, 94, 32, 0.25));
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.termo-alarm-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.termo-alarm-sparkle {
+  color: var(--color-primary, #1b5e20);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.termo-alarm-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-primary-dark, #0d3b13);
+  margin: 0 0 0.25rem 0;
+}
+
+.termo-alarm-desc {
+  font-size: 0.825rem;
+  color: var(--text-main, #1e293b);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Botón institucional de desbloqueo */
+.termo-unlock-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: var(--color-primary, #1b5e20);
+  color: var(--text-on-primary, #ffffff);
+  border: none;
+  border-radius: var(--radius-md, 0.5rem);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-green, 0 4px 14px 0 rgba(27, 94, 32, 0.39));
+  transition: all 0.25s ease;
+}
+
+.termo-unlock-action-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark, #0d3b13);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(27, 94, 32, 0.45);
+}
+
+.termo-unlock-action-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.termo-no-perms-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-primary-dark, #0d3b13);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm, 0.375rem);
+  border: 1px solid rgba(27, 94, 32, 0.2);
+}
+
+/* Cuadro de Termo ya entregado */
+.termo-delivered-box {
+  background: var(--color-primary-light, #e6f2ec);
+  border: 1px solid rgba(27, 94, 32, 0.3);
+  border-radius: var(--radius-md, 0.75rem);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.termo-delivered-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.delivered-check-icon {
+  color: var(--color-primary, #1b5e20);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.delivered-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary-dark, #0d3b13);
+  margin: 0 0 0.2rem 0;
+}
+
+.delivered-date {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.termo-revoke-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+  margin-top: 0.25rem;
+}
+
+.termo-revoke-btn:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #dc2626;
+}

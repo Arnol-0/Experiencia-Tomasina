@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import PinCard from '../components/PinCard';
-import { ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle } from 'lucide-react';
+import TermoTracker from '../components/TermoTracker';
+import TermoCelebrationModal from '../components/TermoCelebrationModal';
+import { 
+  ArrowLeft, Award, X, Flag, Link as LinkIcon, Heart, Lightbulb, Smile, 
+  BookOpen, Crown, Compass, Star, Users, Globe, Lock, Unlock, HelpCircle, 
+  ShieldCheck, CheckCircle, AlertTriangle, Sparkles 
+} from 'lucide-react';
 import { CREDENTIAL_CATALOG } from '../constants/credentials';
 import { isCredentialDelivered, buildCredentialsMap } from '../utils/credentials';
-import { canUnlockPins, canDeliverCredentials } from '../utils/permissions';
+import { canUnlockPins, canDeliverCredentials, isAdmin, isCoordinator } from '../utils/permissions';
 import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './StudentProfile.css';
 
@@ -14,50 +20,39 @@ export { PINS_CATALOG };
 
 const Icons = { Flag, Link: LinkIcon, Heart, Lightbulb, Smile, BookOpen, Crown, Compass, Star, Users, Globe, Lock, HelpCircle };
 
-
 /**
  * ============================================================================
- * PÁGINA: StudentProfile (Perfil del Estudiante y Recorrido de Pines)
+ * PÁGINA: StudentProfile (Perfil del Estudiante, Recorrido de Pines y Termo)
  * ============================================================================
  * 
  * 📌 ¿QUÉ HACE ESTA PÁGINA?
  * - Muestra el detalle del estudiante: nombre, carrera, jornada, institución y sede.
- * - Despliega el catálogo de las 12 insignias o pines formativos.
- * - Permite al coordinador o directivo desbloquear un pin cuando el alumno
- *   cumple y valida la actividad requerida.
- * - Registra la fecha y actividad exacta en el historial del estudiante (`unlockRecords`).
- * 
- * 📌 PRINCIPIOS SOLID APLICADOS:
- * 1. DIP (Inversión de Dependencias):
- *    Utiliza `useData()` para persistir los cambios sin acoplarse a la API de Firestore.
- * 2. ISP (Segregación de Interfaces):
- *    Renderiza cada insignia mediante el componente especializado <PinCard />, pasando
- *    únicamente los estados que le competen a esa tarjeta (`isCollected`, `isAvailable`).
- * 3. SRP (Responsabilidad Única):
- *    Esta pantalla solo gestiona el viaje del estudiante y la validación de sus requisitos.
+ * - Despliega el catálogo de insignias y credenciales.
+ * - Muestra en el lateral derecho el Termo Tomasino que se va llenando hasta 7 pines.
+ * - Alerta cuando se alcanzan 7 pines para desbloquear y registrar la entrega del termo.
+ * - Permite al Admin y Coordinador bloquear y desbloquear cualquier pin directamente.
  */
 const StudentProfile = () => {
-  // 1. Obtiene el parámetro de la URL (el ID o RUT del estudiante, ej: /student/12345678-9)
+  // 1. Obtiene el parámetro de la URL (el ID o RUT del estudiante)
   const { id } = useParams();
   
   // 2. Inversión de dependencias (DIP): Extrae la lista y el actualizador global
   const { studentsList, updateStudent } = useData();
   const student = studentsList.find(s => s.id === id);
 
-  // 3. Usuario de la sesión: determina si puede registrar entregas de credenciales y pines
+  // 3. Usuario de la sesión y permisos granulares
   const { user } = useAuth();
   const canDeliver = canDeliverCredentials(user);
   const canUnlock = canUnlockPins(user);
+  const canManagePins = isAdmin(user) || isCoordinator(user);
 
-  // Estados locales para el modal de desbloqueo de pines
+  // Estados locales para el modal de desbloqueo y gestión de pines
   const [selectedPin, setSelectedPin] = useState(null);
   const [selectedActivities, setSelectedActivities] = useState([]);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [isProcessingTermo, setIsProcessingTermo] = useState(false);
 
-  // 📌 ENTREGAS OPTIMISTAS DE CREDENCIALES:
-  // Guardamos localmente la entrega recién confirmada para que la tarjeta pase
-  // al estado "obtenido" (con su animación) en el mismo instante del clic, sin
-  // esperar el viaje de ida y vuelta a Firestore ni la actualización del listener.
+  // Entregas optimistas de credenciales
   const [pendingCredentials, setPendingCredentials] = useState({});
   const [celebratingCredential, setCelebratingCredential] = useState(null);
   const [credentialError, setCredentialError] = useState('');
@@ -67,90 +62,210 @@ const StudentProfile = () => {
     return (
       <div className="container profile-not-found">
         <h2>Estudiante no encontrado</h2>
-        <Link to="/" className="back-link"><ArrowLeft /> Volver al directorio</Link>
+        <Link to="/directorio" className="back-link"><ArrowLeft /> Volver al directorio</Link>
       </div>
     );
   }
 
-  // --------------------------------------------------------------------------
-  // VISTA COMBINADA DEL ESTUDIANTE
-  // --------------------------------------------------------------------------
-  // 📌 Mezcla lo que ya está guardado en Firestore con las entregas confirmadas
-  // en esta sesión, para que la tarjeta reaccione al clic inmediatamente.
+  // Vista combinada del estudiante con credenciales optimistas
   const studentView = {
     ...student,
     credentials: { ...(student.credentials || {}), ...pendingCredentials }
   };
 
+  // Contadores de pines obtenidos
+  const collectedPins = student.collectedPins || [];
+  const availablePins = student.availablePins || [];
+  const collectedCount = collectedPins.length;
+
+  // Estado del Termo
+  const isTermoDelivered = Boolean(student.credentials?.termo?.delivered || student.termoDelivered);
+  const termoRecord = student.credentials?.termo || student.termoRecord || null;
+
+  // Estado para la notificación central de celebración a los 7 pines
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [hasAutoOpenedCelebration, setHasAutoOpenedCelebration] = useState(false);
+
+  // Al llegar al séptimo pin (7 o más) y no haber sido entregado aún,
+  // se muestra automáticamente la notificación en medio una vez por sesión
+  useEffect(() => {
+    if (collectedCount >= 7 && !isTermoDelivered && !hasAutoOpenedCelebration) {
+      setShowCelebrationModal(true);
+      setHasAutoOpenedCelebration(true);
+    }
+  }, [collectedCount, isTermoDelivered, hasAutoOpenedCelebration]);
+
   // --------------------------------------------------------------------------
   // INTERACCIÓN: Clic sobre un Pin
   // --------------------------------------------------------------------------
   const handlePinClick = (pin) => {
-    // Solo permitimos abrir el modal si el usuario tiene permiso para desbloquear pines
-    if (!canUnlock) return;
-
-    const collected = student.collectedPins || [];
-    const available = student.availablePins || [];
-    
-    // Solo permitimos abrir el modal de desbloqueo si el pin está disponible y no ha sido ganado aún
-    if (!collected.includes(pin.id) && available.includes(pin.id)) {
+    // Admin y Coordinador pueden gestionar CUALQUIER pin (bloqueado, disponible u obtenido)
+    if (canManagePins) {
       setSelectedPin(pin);
-      setSelectedActivities([]); // Reiniciamos actividades marcadas
+      setSelectedActivities([]);
+      return;
+    }
+
+    // Usuario estándar: solo abre si está disponible y aún no obtenido
+    if (canUnlock) {
+      if (!collectedPins.includes(pin.id) && availablePins.includes(pin.id)) {
+        setSelectedPin(pin);
+        setSelectedActivities([]);
+      }
     }
   };
 
   // --------------------------------------------------------------------------
-  // PROCESO DE DESBLOQUEO DEL PIN
+  // PROCESO ESTÁNDAR: Desbloqueo de Pin validando requisitos
   // --------------------------------------------------------------------------
   const handleUnlock = async () => {
-    // Validación: debe haber seleccionado al menos una actividad y no estar ya guardando
     if (!selectedPin || selectedActivities.length === 0 || isUnlocking) return;
-    
     setIsUnlocking(true);
 
-    // 1. Agregamos el pin a la lista de pines obtenidos
-    const collected = student.collectedPins || [];
-    const newCollectedPins = [...collected, selectedPin.id];
-    
-    // 2. Lo removemos de la lista de pendientes/disponibles
-    const available = student.availablePins || [];
-    const newAvailablePins = available.filter(pinId => pinId !== selectedPin.id);
+    try {
+      const newCollectedPins = [...collectedPins, selectedPin.id];
+      const newAvailablePins = availablePins.filter(pinId => pinId !== selectedPin.id);
 
-    // 3. Guardamos registro de auditoría con la fecha ISO y las actividades seleccionadas
-    const unlockRecords = student.unlockRecords || {};
-    const newUnlockRecords = {
-      ...unlockRecords,
-      [selectedPin.id]: {
-        date: new Date().toISOString(),
-        activity: selectedActivities.join(', ')
-      }
-    };
+      const unlockRecords = student.unlockRecords || {};
+      const newUnlockRecords = {
+        ...unlockRecords,
+        [selectedPin.id]: {
+          date: new Date().toISOString(),
+          activity: selectedActivities.join(', ')
+        }
+      };
 
-    // 4. Invocamos actualización atómica a través del contexto
-    await updateStudent(student.id, {
-      collectedPins: newCollectedPins,
-      unlockRecords: newUnlockRecords,
-      availablePins: newAvailablePins
-    });
+      await updateStudent(student.id, {
+        collectedPins: newCollectedPins,
+        unlockRecords: newUnlockRecords,
+        availablePins: newAvailablePins
+      });
 
-    // 5. Cerramos el modal de desbloqueo y reseteamos el estado de carga
-    setSelectedPin(null);
-    setIsUnlocking(false);
+      setSelectedPin(null);
+    } catch (error) {
+      console.error('Error al desbloquear pin:', error);
+    } finally {
+      setIsUnlocking(false);
+    }
   };
 
   // --------------------------------------------------------------------------
-  // PROCESO: Entrega de credenciales (lanyard / pasaporte)
+  // GESTIÓN ADMINISTRATIVA: Bloquear y Desbloquear Pines (Admin y Coordinador)
   // --------------------------------------------------------------------------
-  /**
-   * Registra la entrega de Lanyard o Pasaporte.
-   *
-   * 📌 Flujo (UI optimista):
-   * 1. Se pinta la tarjeta como "obtenida" al instante → dispara la misma
-   *    animación de pulso verde que un pin recién desbloqueado.
-   * 2. Se persiste la entrega en Firestore (`students/{id}.credentials`).
-   * 3. Si la escritura falla, se revierte el estado visual y se muestra el
-   *    error, de modo que nunca quede una tarjeta "entregada" sin guardar.
-   */
+
+  // 1. Desbloqueo directo por Administración
+  const handleDirectUnlockPin = async (pinId) => {
+    if (!canManagePins || isUnlocking) return;
+    setIsUnlocking(true);
+
+    try {
+      const newCollectedPins = collectedPins.includes(pinId) ? collectedPins : [...collectedPins, pinId];
+      const newAvailablePins = availablePins.filter(id => id !== pinId);
+
+      const unlockRecords = student.unlockRecords || {};
+      const newUnlockRecords = {
+        ...unlockRecords,
+        [pinId]: {
+          date: new Date().toISOString(),
+          activity: 'Desbloqueo manual por Administración'
+        }
+      };
+
+      await updateStudent(student.id, {
+        collectedPins: newCollectedPins,
+        availablePins: newAvailablePins,
+        unlockRecords: newUnlockRecords
+      });
+
+      setSelectedPin(null);
+    } catch (err) {
+      console.error('Error en desbloqueo directo:', err);
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  // 2. Habilitar pin como Disponible (pendiente de entrega)
+  const handleMakePinAvailable = async (pinId) => {
+    if (!canManagePins || isUnlocking) return;
+    setIsUnlocking(true);
+
+    try {
+      const newAvailablePins = availablePins.includes(pinId) ? availablePins : [...availablePins, pinId];
+      const newCollectedPins = collectedPins.filter(id => id !== pinId);
+
+      const unlockRecords = { ...(student.unlockRecords || {}) };
+      delete unlockRecords[pinId];
+
+      await updateStudent(student.id, {
+        availablePins: newAvailablePins,
+        collectedPins: newCollectedPins,
+        unlockRecords
+      });
+
+      setSelectedPin(null);
+    } catch (err) {
+      console.error('Error al habilitar pin disponible:', err);
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  // 3. Bloquear pin (remover tanto de obtenidos como de disponibles)
+  const handleLockPin = async (pinId) => {
+    if (!canManagePins || isUnlocking) return;
+    setIsUnlocking(true);
+
+    try {
+      const newCollectedPins = collectedPins.filter(id => id !== pinId);
+      const newAvailablePins = availablePins.filter(id => id !== pinId);
+
+      const unlockRecords = { ...(student.unlockRecords || {}) };
+      delete unlockRecords[pinId];
+
+      await updateStudent(student.id, {
+        collectedPins: newCollectedPins,
+        availablePins: newAvailablePins,
+        unlockRecords
+      });
+
+      setSelectedPin(null);
+    } catch (err) {
+      console.error('Error al bloquear pin:', err);
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  // 4. Mover de Obtenido a Disponible
+  const handleMovePinToAvailable = async (pinId) => {
+    if (!canManagePins || isUnlocking) return;
+    setIsUnlocking(true);
+
+    try {
+      const newCollectedPins = collectedPins.filter(id => id !== pinId);
+      const newAvailablePins = availablePins.includes(pinId) ? availablePins : [...availablePins, pinId];
+
+      const unlockRecords = { ...(student.unlockRecords || {}) };
+      delete unlockRecords[pinId];
+
+      await updateStudent(student.id, {
+        collectedPins: newCollectedPins,
+        availablePins: newAvailablePins,
+        unlockRecords
+      });
+
+      setSelectedPin(null);
+    } catch (err) {
+      console.error('Error al mover pin a disponible:', err);
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // PROCESO: Entrega y Reversión de Credenciales (Lanyard / Pasaporte)
+  // --------------------------------------------------------------------------
   const handleDeliverCredential = async (credential) => {
     if (isCredentialDelivered(studentView, credential.id)) return;
 
@@ -160,17 +275,14 @@ const StudentProfile = () => {
       user?.email || user?.name
     );
 
-    // 1. Feedback inmediato: estado "obtenido" + animación de entrega.
     setCredentialError('');
     setPendingCredentials(prev => ({ ...prev, [credential.id]: credentials[credential.id] }));
     setCelebratingCredential(credential.id);
     setTimeout(() => setCelebratingCredential(null), 1200);
 
-    // 2. Persistencia en Firestore.
     try {
       await updateStudent(student.id, { credentials });
     } catch (error) {
-      // 3. Reversión: si no se guardó, la tarjeta vuelve a "disponible".
       console.error('No se pudo registrar la entrega de la credencial:', error);
       setPendingCredentials(prev => {
         const next = { ...prev };
@@ -179,6 +291,73 @@ const StudentProfile = () => {
       });
       setCelebratingCredential(null);
       setCredentialError('No se pudo registrar la entrega. Revisa tu conexión e inténtalo nuevamente.');
+    }
+  };
+
+  const handleRevokeCredential = async (credentialId) => {
+    if (!canManagePins) return;
+    if (!window.confirm('¿Seguro que deseas revertir o bloquear la entrega de esta credencial?')) return;
+
+    try {
+      const updatedCredentials = { ...(student.credentials || {}) };
+      delete updatedCredentials[credentialId];
+      await updateStudent(student.id, { credentials: updatedCredentials });
+    } catch (err) {
+      console.error('Error al revocar credencial:', err);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // RECOMPENSA: Desbloquear y Revertir Termo Tomasino
+  // --------------------------------------------------------------------------
+  const handleUnlockTermo = async () => {
+    if (isTermoDelivered || isProcessingTermo) return;
+    setIsProcessingTermo(true);
+
+    try {
+      const nowIso = new Date().toISOString();
+      const deliveredBy = user?.email || user?.name || 'Administración';
+      const record = {
+        delivered: true,
+        deliveredAt: nowIso,
+        deliveredBy
+      };
+
+      const updatedCredentials = {
+        ...(student.credentials || {}),
+        termo: record
+      };
+
+      await updateStudent(student.id, {
+        credentials: updatedCredentials,
+        termoDelivered: true,
+        termoRecord: record
+      });
+    } catch (err) {
+      console.error('Error al entregar el termo:', err);
+    } finally {
+      setIsProcessingTermo(false);
+    }
+  };
+
+  const handleRevokeTermo = async () => {
+    if (!canManagePins || isProcessingTermo) return;
+    if (!window.confirm('¿Seguro que deseas revertir la entrega del termo a este estudiante?')) return;
+    setIsProcessingTermo(true);
+
+    try {
+      const updatedCredentials = { ...(student.credentials || {}) };
+      delete updatedCredentials.termo;
+
+      await updateStudent(student.id, {
+        credentials: updatedCredentials,
+        termoDelivered: false,
+        termoRecord: null
+      });
+    } catch (err) {
+      console.error('Error al revertir entrega del termo:', err);
+    } finally {
+      setIsProcessingTermo(false);
     }
   };
 
@@ -204,21 +383,27 @@ const StudentProfile = () => {
         </div>
       </div>
 
-      {/* ===== COLECCIÓN: Lanyard, Pasaporte y los 12 pines formativos =====
-          Las credenciales usan el mismo componente y estados que los pines:
-          candado brillante cuando están disponibles y animación de "obtenido"
-          al confirmar la entrega con un clic. */}
-      <div className="profile-content" style={{ display: 'block' }}>
-        <div className="pins-section animate-fade-in" style={{ animationDelay: '0.2s', width: '100%', margin: '0 auto' }}>
+      {/* LAYOUT PRINCIPAL: Lado Izquierdo Colección + Lado Derecho Termo Tracker */}
+      <div className="profile-main-layout">
+        {/* LADO IZQUIERDO: Colección de credenciales y pines */}
+        <div className="pins-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <div className="section-title">
             <Award className="section-icon" />
             <h2>Colección</h2>
+            {canManagePins && (
+              <span className="admin-badge-indicator" title="Eres Admin/Coordinador: puedes hacer clic en cualquier pin para bloquearlo o desbloquearlo">
+                <ShieldCheck size={16} /> Modo Gestión (Admin)
+              </span>
+            )}
           </div>
 
           <div className="pins-grid">
+            {/* 1. CREDENCIALES: Lanyard y Pasaporte */}
             {CREDENTIAL_CATALOG.map(credential => {
               const delivered = isCredentialDelivered(studentView, credential.id);
               const isAvailable = canDeliver && !delivered;
+              const isClickable = isAvailable || (delivered && canManagePins);
+
               const credentialPin = {
                 id: credential.id,
                 name: credential.label,
@@ -227,110 +412,290 @@ const StudentProfile = () => {
                 icon: credential.icon
               };
 
+              const handleClick = () => {
+                if (isAvailable) {
+                  handleDeliverCredential(credential);
+                } else if (delivered && canManagePins) {
+                  handleRevokeCredential(credential.id);
+                }
+              };
+
               return (
                 <PinCard
                   key={credential.id}
                   pin={credentialPin}
                   isCollected={delivered}
                   isAvailable={isAvailable}
-                  onClick={isAvailable ? () => handleDeliverCredential(credential) : undefined}
+                  onClick={isClickable ? handleClick : undefined}
                   className={celebratingCredential === credential.id ? 'just-delivered' : ''}
                 />
               );
             })}
 
+            {/* 2. PINES FORMATIVOS */}
             {PINS_CATALOG.map(pin => {
-              const isCollected = (student.collectedPins || []).includes(pin.id);
-              const isAvailable = (student.availablePins || []).includes(pin.id);
+              const isCollected = collectedPins.includes(pin.id);
+              const isAvailable = availablePins.includes(pin.id);
+              const isClickable = canManagePins || (canUnlock && isAvailable);
+
               return (
                 <PinCard
                   key={pin.id}
                   pin={pin}
                   isCollected={isCollected}
                   isAvailable={isAvailable}
-                  onClick={canUnlock && isAvailable ? () => handlePinClick(pin) : undefined}
+                  onClick={isClickable ? () => handlePinClick(pin) : undefined}
                   icons={Icons}
                 />
               );
             })}
           </div>
 
-          {/* Sólo aparece si Firestore rechazó la entrega: la tarjeta volvió a
-              su estado anterior y aquí se explica el motivo. */}
           {credentialError && (
             <p className="credential-error">{credentialError}</p>
           )}
         </div>
+
+        {/* LADO DERECHO: TERMO TOMASINO (SOMBRA + RELLENO + ALARMA A LOS 7 PINES) */}
+        <aside className="termo-sidebar animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <TermoTracker
+            collectedCount={collectedCount}
+            targetCount={7}
+            isDelivered={isTermoDelivered}
+            deliveredRecord={termoRecord}
+            canUnlock={canUnlock || canManagePins}
+            canManage={canManagePins}
+            isProcessing={isProcessingTermo}
+            onUnlock={() => setShowCelebrationModal(true)}
+            onRevoke={handleRevokeTermo}
+          />
+        </aside>
       </div>
 
-      {/* MODAL DE DESBLOQUEO: Solo se abre cuando el usuario hace clic en un pin disponible */}
+      {/* NOTIFICACIÓN CENTRAL AL LLEGAR AL SÉPTIMO PIN */}
+      <TermoCelebrationModal
+        isOpen={showCelebrationModal}
+        onClose={() => setShowCelebrationModal(false)}
+        studentName={student.name}
+        isDelivered={isTermoDelivered}
+        isProcessing={isProcessingTermo}
+        onUnlock={handleUnlockTermo}
+      />
+
+      {/* =========================================================================
+          MODAL DE GESTIÓN Y DESBLOQUEO DE PINES
+          Soporta 3 estados:
+          1. Ya Obtenido (Admin puede bloquear/revocar o mover a disponible)
+          2. Bloqueado (Admin puede desbloquear directamente o habilitar como disponible)
+          3. Disponible (Flujo regular con checkboxes + botón admin para volver a bloquear)
+          ========================================================================= */}
       {selectedPin && (
-        <div className="modal-overlay">
+        <div 
+          className="modal-overlay" 
+          onClick={(e) => { 
+            if (e.target.classList.contains('modal-overlay')) setSelectedPin(null); 
+          }}
+        >
           <div className="modal-content animate-fade-in">
-            {/* Botón para cerrar */}
-            <button className="modal-close" onClick={() => setSelectedPin(null)}>
+            <button 
+              type="button" 
+              className="modal-close" 
+              onClick={() => setSelectedPin(null)}
+              aria-label="Cerrar modal"
+            >
               <X size={24} />
             </button>
-            
-            <h2 className="modal-title text-gradient">
-              Desbloquear Pin: {selectedPin.name}
-            </h2>
 
-            {/* Requisitos del catálogo para este pin */}
-            <div className="pin-requirement">
-              <h4>Requisito para desbloquear:</h4>
-              <p>{selectedPin.requirementText}</p>
-              <ul className="pin-options-list">
-                {selectedPin.options.map((opt, i) => (
-                  <li key={i}>{opt}</li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Lista de actividades para marcar con checkbox */}
-            <div className="form-group options-group">
-              <label className="options-label">
-                Selecciona la(s) actividad(es) realizada(s):
-              </label>
-
-              <div className="activities-checkbox-list">
-                {selectedPin.options.map((opt, i) => (
-                  <label key={i} className="activity-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={selectedActivities.includes(opt)}
-                      onChange={() => {
-                        setSelectedActivities(prev =>
-                          prev.includes(opt)
-                            ? prev.filter(a => a !== opt)
-                            : [...prev, opt]
-                        )
-                      }}
-                      className="activity-checkbox-input"
-                    />
-                    <span className="activity-checkbox-text">{opt}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Botón para confirmar y desbloquear con barra de progreso */}
-            <button
-              className={`unlock-btn ${isUnlocking ? 'is-loading' : ''}`}
-              onClick={handleUnlock}
-              disabled={selectedActivities.length === 0 || isUnlocking}
-            >
-              {isUnlocking ? (
-                <div className="btn-loading-content">
-                  <span>Desbloqueando...</span>
-                  <div className="progress-bar-wrapper">
-                    <div className="progress-bar-fill"></div>
+            {/* CASO A: Pin YA OBTENIDO (Gestión administrativa) */}
+            {collectedPins.includes(selectedPin.id) ? (
+              <div className="pin-admin-manage-section">
+                <div className="pin-manage-header">
+                  <div className="pin-manage-icon-wrapper collected">
+                    <CheckCircle size={32} />
+                  </div>
+                  <div>
+                    <span className="pin-badge-status collected">✓ Pin Obtenido</span>
+                    <h2 className="modal-title">{selectedPin.name}</h2>
+                    <span className="pin-manage-category">{selectedPin.category}</span>
                   </div>
                 </div>
-              ) : (
-                'Confirmar y Desbloquear'
-              )}
-            </button>
+
+                <div className="pin-manage-details-box">
+                  <h4>Registro de obtención:</h4>
+                  {student.unlockRecords?.[selectedPin.id] ? (
+                    <ul className="pin-audit-list">
+                      <li>
+                        <strong>Fecha:</strong>{' '}
+                        {new Date(student.unlockRecords[selectedPin.id].date).toLocaleDateString('es-CL', {
+                          day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </li>
+                      <li>
+                        <strong>Actividad registrada:</strong>{' '}
+                        {student.unlockRecords[selectedPin.id].activity || 'Validación DAE'}
+                      </li>
+                    </ul>
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                      Insignia acreditada en el sistema.
+                    </p>
+                  )}
+                </div>
+
+                {canManagePins && (
+                  <div className="admin-actions-group">
+                    <p className="admin-action-hint">
+                      Como Administrador o Coordinador, puedes revocar o cambiar el estado de este pin:
+                    </p>
+                    <div className="admin-buttons-row">
+                      <button
+                        type="button"
+                        className="btn-admin-danger"
+                        onClick={() => handleLockPin(selectedPin.id)}
+                        disabled={isUnlocking}
+                      >
+                        <Lock size={16} />
+                        <span>Bloquear Pin (Revocar)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-secondary"
+                        onClick={() => handleMovePinToAvailable(selectedPin.id)}
+                        disabled={isUnlocking}
+                      >
+                        <Unlock size={16} />
+                        <span>Mover a Disponible</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : !availablePins.includes(selectedPin.id) ? (
+              /* CASO B: Pin BLOQUEADO (Gestión administrativa) */
+              <div className="pin-admin-manage-section">
+                <div className="pin-manage-header">
+                  <div className="pin-manage-icon-wrapper locked">
+                    <Lock size={32} />
+                  </div>
+                  <div>
+                    <span className="pin-badge-status locked">🔒 Pin Bloqueado</span>
+                    <h2 className="modal-title">{selectedPin.name}</h2>
+                    <span className="pin-manage-category">{selectedPin.category}</span>
+                  </div>
+                </div>
+
+                <div className="pin-requirement">
+                  <h4>Requisito regular:</h4>
+                  <p>{selectedPin.requirementText}</p>
+                  <ul className="pin-options-list">
+                    {selectedPin.options.map((opt, i) => (
+                      <li key={i}>{opt}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {canManagePins && (
+                  <div className="admin-actions-group">
+                    <p className="admin-action-hint">
+                      Gestión administrativa directa para este estudiante:
+                    </p>
+                    <div className="admin-buttons-row">
+                      <button
+                        type="button"
+                        className="btn-admin-primary"
+                        onClick={() => handleDirectUnlockPin(selectedPin.id)}
+                        disabled={isUnlocking}
+                      >
+                        <Sparkles size={16} />
+                        <span>Desbloquear Directamente</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-secondary"
+                        onClick={() => handleMakePinAvailable(selectedPin.id)}
+                        disabled={isUnlocking}
+                      >
+                        <Unlock size={16} />
+                        <span>Habilitar como Disponible</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* CASO C: Pin DISPONIBLE (Flujo regular con checkboxes + bloqueo para admin) */
+              <div>
+                <h2 className="modal-title text-gradient">
+                  Desbloquear Pin: {selectedPin.name}
+                </h2>
+
+                <div className="pin-requirement">
+                  <h4>Requisito para desbloquear:</h4>
+                  <p>{selectedPin.requirementText}</p>
+                  <ul className="pin-options-list">
+                    {selectedPin.options.map((opt, i) => (
+                      <li key={i}>{opt}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="form-group options-group">
+                  <label className="options-label">
+                    Selecciona la(s) actividad(es) realizada(s):
+                  </label>
+                  <div className="activities-checkbox-list">
+                    {selectedPin.options.map((opt, i) => (
+                      <label key={i} className="activity-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={selectedActivities.includes(opt)}
+                          onChange={() => {
+                            setSelectedActivities(prev =>
+                              prev.includes(opt)
+                                ? prev.filter(a => a !== opt)
+                                : [...prev, opt]
+                            );
+                          }}
+                          className="activity-checkbox-input"
+                        />
+                        <span className="activity-checkbox-text">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={`unlock-btn ${isUnlocking ? 'is-loading' : ''}`}
+                  onClick={handleUnlock}
+                  disabled={selectedActivities.length === 0 || isUnlocking}
+                >
+                  {isUnlocking ? (
+                    <div className="btn-loading-content">
+                      <span>Desbloqueando...</span>
+                      <div className="progress-bar-wrapper">
+                        <div className="progress-bar-fill"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    'Confirmar y Desbloquear'
+                  )}
+                </button>
+
+                {canManagePins && (
+                  <div className="admin-modal-footer">
+                    <button
+                      type="button"
+                      className="btn-admin-danger-text"
+                      onClick={() => handleLockPin(selectedPin.id)}
+                      disabled={isUnlocking}
+                    >
+                      <Lock size={15} /> Volver a Bloquear Pin (Admin)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

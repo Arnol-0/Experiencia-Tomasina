@@ -26,6 +26,23 @@
   opacity: 0.85;
 }
 
+.pin-card.is-clickable {
+  cursor: pointer;
+}
+
+.pin-card.locked.is-clickable:hover {
+  filter: grayscale(30%);
+  opacity: 1;
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.pin-card.collected.is-clickable:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 18px rgba(76, 175, 80, 0.25);
+}
+
 @keyframes pulse-green {
   0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
   70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }

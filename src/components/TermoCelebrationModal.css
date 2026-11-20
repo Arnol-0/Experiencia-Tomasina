@@ -1,0 +1,271 @@
+/* ============================================================================
+   ESTILOS: TermoCelebrationModal.css (Notificación Central de Logro)
+   ============================================================================ */
+
+.celebration-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 59, 19, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+
+.celebration-card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-primary-light, #e6f2ec);
+  border-radius: var(--radius-lg, 1.25rem);
+  padding: 2.5rem 2rem 2rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 20px 45px rgba(27, 94, 32, 0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+@keyframes scaleUp {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.celebration-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: var(--text-muted, #64748b);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.celebration-close-btn:hover {
+  background: var(--color-primary-light, #e6f2ec);
+  color: var(--color-primary, #1b5e20);
+}
+
+/* Insignia superior */
+.celebration-top-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-primary-light, #e6f2ec);
+  color: var(--color-primary-dark, #0d3b13);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.3rem 0.85rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(27, 94, 32, 0.2);
+  margin-bottom: 1.25rem;
+}
+
+.celebration-badge-icon {
+  color: #d97706;
+}
+
+/* Contenedor del Termo e Ilustración */
+.celebration-termo-container {
+  position: relative;
+  width: 140px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.celebration-termo-halo {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.3) 0%, rgba(27, 94, 32, 0.15) 50%, transparent 75%);
+  border-radius: 50%;
+  z-index: 0;
+  animation: pulseHalo 3s ease-in-out infinite alternate;
+}
+
+@keyframes pulseHalo {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(1.15); opacity: 1; }
+}
+
+.celebration-termo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 8px 18px rgba(27, 94, 32, 0.3));
+}
+
+@keyframes floatTermo {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float-termo {
+  animation: floatTermo 3.5s ease-in-out infinite;
+}
+
+.celebration-sparkle-tag {
+  position: absolute;
+  bottom: 0;
+  right: -0.5rem;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--color-primary, #1b5e20);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  z-index: 2;
+}
+
+/* Textos de felicitación */
+.celebration-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+.celebration-student {
+  font-size: 1.05rem;
+  color: var(--color-primary-dark, #0d3b13);
+  margin-bottom: 0.4rem;
+  line-height: 1.4;
+}
+
+.celebration-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 1.75rem;
+  line-height: 1.45;
+  max-width: 380px;
+}
+
+/* Botones de acción */
+.celebration-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.celebration-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  background: var(--color-primary, #1b5e20);
+  color: var(--text-on-primary, #ffffff);
+  border: none;
+  border-radius: var(--radius-md, 0.75rem);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-green, 0 4px 14px 0 rgba(27, 94, 32, 0.39));
+  transition: all 0.25s ease;
+}
+
+.celebration-btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark, #0d3b13);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(27, 94, 32, 0.45);
+}
+
+.celebration-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.celebration-btn-secondary {
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.celebration-btn-secondary:hover {
+  color: var(--text-main, #1e293b);
+  text-decoration: underline;
+}
+
+.celebration-already-delivered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.celebration-success-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-primary-light, #e6f2ec);
+  color: var(--color-primary, #1b5e20);
+  padding: 0.6rem 1rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Partículas animadas de confeti institucional */
+.celebration-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 4px;
+  opacity: 0.8;
+  animation: floatParticle 4s infinite ease-in-out;
+}
+
+.p1 { top: 15%; left: 20%; width: 10px; height: 10px; background: #1b5e20; animation-delay: 0s; }
+.p2 { top: 25%; right: 22%; width: 8px; height: 12px; background: #4caf50; animation-delay: 0.5s; transform: rotate(25deg); }
+.p3 { bottom: 20%; left: 25%; width: 12px; height: 8px; background: #d97706; animation-delay: 1s; transform: rotate(-15deg); }
+.p4 { bottom: 25%; right: 28%; width: 9px; height: 9px; background: #81c784; animation-delay: 1.5s; }
+.p5 { top: 40%; left: 15%; width: 11px; height: 6px; background: #e6f2ec; animation-delay: 2s; border: 1px solid #1b5e20; }
+.p6 { top: 45%; right: 15%; width: 8px; height: 10px; background: #1b5e20; animation-delay: 0.8s; transform: rotate(45deg); }
+.p7 { bottom: 35%; left: 30%; width: 7px; height: 7px; background: #f59e0b; animation-delay: 1.2s; }
+.p8 { top: 60%; right: 20%; width: 10px; height: 8px; background: #4caf50; animation-delay: 2.4s; }
+
+@keyframes floatParticle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(180deg); }
+}

@@ -28,18 +28,19 @@ const PinCard = ({ pin, isCollected, isAvailable, onClick, className = '' }) => 
   // 1. Selector dinámico del icono: Busca el icono en 'lucide-react' o usa un signo de pregunta por defecto
   const IconComponent = Icons[pin.icon] || Icons.HelpCircle;
 
-  // 2. Determina si se puede hacer clic: Solo si está disponible, no obtenido y tiene acción
-  const isClickable = !isCollected && isAvailable && typeof onClick === 'function';
+  // 2. Determina si se puede hacer clic: Cualquier pin con callback onClick asignado es clickeable
+  const isClickable = typeof onClick === 'function';
 
   return (
     <div 
       // 📌 Clase CSS dinámica según el estado: 'collected', 'available' o 'locked'.
       // `className` permite que quien lo use añada una animación puntual (por ejemplo
       // el pulso verde al confirmar la entrega de una credencial) sin alterar los pines.
-      className={`pin-card ${isCollected ? 'collected' : (isAvailable ? 'available' : 'locked')} ${className}`.trim()} 
+      className={`pin-card ${isCollected ? 'collected' : (isAvailable ? 'available' : 'locked')} ${isClickable ? 'is-clickable' : ''} ${className}`.trim()} 
       // Si es clickeable asignamos la función onClick; si no, queda desactivado (undefined)
       onClick={isClickable ? onClick : undefined} 
       style={{ cursor: isClickable ? 'pointer' : 'default' }}
+      title={isClickable ? (isCollected ? `${pin.name} (Obtenido - Clic para gestionar)` : isAvailable ? `${pin.name} (¡Listo para desbloquear!)` : `${pin.name} (Bloqueado - Clic para gestionar)`) : pin.name}
     >
       {/* CONTENEDOR DE LA IMAGEN O ICONO DEL PIN */}
       <div 
