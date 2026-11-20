@@ -1,3 +1,17 @@
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-layout main {
+  padding-top: 10rem;
+}
+
+@media (max-width: 768px) {
+  .app-layout main {
+    padding-top: 8rem;
+  }
+}
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;

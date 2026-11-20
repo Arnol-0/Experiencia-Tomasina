@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useAppVersion } from '../context/AppVersionContext';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Users, Award, Search, X, Trash2, UserPlus, Upload, AlertTriangle } from 'lucide-react';
+import { Users, Award, Search, X, Trash2, UserPlus, Upload, AlertTriangle, Megaphone, Plus } from 'lucide-react';
 import { PINS_CATALOG } from '../constants/pinsCatalog';
 import './Dashboard.css';
 import CustomSelect from '../components/CustomSelect';
@@ -12,7 +13,7 @@ import { excelService } from '../services/excelService';
 import { validationService } from '../services/validationService';
 import pinImportService from '../services/pinImportService';
 import { branchOptions, ALL_BRANCHES } from '../constants/branches';
-import { ROLES, isGlobalUser, isNationalScopeBranch } from '../utils/permissions';
+import { ROLES, isGlobalUser, isNationalScopeBranch, isAdmin } from '../utils/permissions';
 import CreateUserModal from '../components/modals/CreateUserModal';
 import ManageUsersModal from '../components/modals/ManageUsersModal';
 import SearchEditStudentModal from '../components/modals/SearchEditStudentModal';
@@ -27,9 +28,20 @@ const roleOptions = [
   { value: ROLES.COORDINATOR, label: 'Coordinador (Nacional)' }
 ];
 
+const formatReleaseDateEs = (date = new Date()) => {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const months = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  return `${d.getDate()} de ${months[d.getMonth()]}, ${d.getFullYear()}`;
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { studentsList, isLoadingStudents, addStudents, batchUpdateStudents, updateStudent, deleteStudent, deleteStudentsByBranch } = useData();
+  const { currentVersion, currentRelease, publishAppRelease } = useAppVersion();
 
   const [newBranch, setNewBranch] = useState('Arica');
   const [message, setMessage] = useState('');
@@ -56,6 +68,16 @@ const Dashboard = () => {
 
   const [showSystemUsersModal, setShowSystemUsersModal] = useState(false);
 
+  const [showPublishVersionModal, setShowPublishVersionModal] = useState(false);
+  const [isPublishingVersion, setIsPublishingVersion] = useState(false);
+  const [publishVersionError, setPublishVersionError] = useState('');
+  const [versionForm, setVersionForm] = useState({
+    version: '',
+    title: '',
+    date: '',
+    changes: [{ icon: '✨', text: '' }]
+  });
+
   const fetchStaff = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'users'));
@@ -66,6 +88,83 @@ const Dashboard = () => {
       setStaffList(staff);
     } catch (err) {
       console.error("Error fetching staff:", err);
+    }
+  };
+
+  const openPublishVersionModal = () => {
+    const baseChanges = Array.isArray(currentRelease?.changes) && currentRelease.changes.length > 0
+      ? currentRelease.changes.map((c) => ({ icon: c.icon || '✨', text: c.text || '' }))
+      : [{ icon: '✨', text: '' }];
+
+    setVersionForm({
+      version: currentRelease?.version || currentVersion || '',
+      title: currentRelease?.title || '',
+      date: currentRelease?.date || formatReleaseDateEs(new Date()),
+      changes: baseChanges
+    });
+    setPublishVersionError('');
+    setShowPublishVersionModal(true);
+  };
+
+  const updateVersionChange = (index, field, value) => {
+    setVersionForm((prev) => {
+      const next = [...prev.changes];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, changes: next };
+    });
+  };
+
+  const addVersionChangeRow = () => {
+    setVersionForm((prev) => ({
+      ...prev,
+      changes: [...prev.changes, { icon: '✨', text: '' }]
+    }));
+  };
+
+  const removeVersionChangeRow = (index) => {
+    setVersionForm((prev) => {
+      const next = prev.changes.filter((_, i) => i !== index);
+      return { ...prev, changes: next.length > 0 ? next : [{ icon: '✨', text: '' }] };
+    });
+  };
+
+  const handlePublishVersion = async (e) => {
+    e.preventDefault();
+    setPublishVersionError('');
+
+    const payload = {
+      version: String(versionForm.version || '').trim(),
+      title: String(versionForm.title || '').trim(),
+      date: String(versionForm.date || '').trim(),
+      changes: (versionForm.changes || [])
+        .map((c) => ({ icon: String(c.icon || '✨').trim() || '✨', text: String(c.text || '').trim() }))
+        .filter((c) => c.text)
+    };
+
+    if (!payload.version) {
+      setPublishVersionError('Debes ingresar la versión (ej: 1.3).');
+      return;
+    }
+    if (!payload.title) {
+      setPublishVersionError('Debes ingresar un título para la actualización.');
+      return;
+    }
+    if (payload.changes.length === 0) {
+      setPublishVersionError('Agrega al menos una nota de parche.');
+      return;
+    }
+
+    setIsPublishingVersion(true);
+    try {
+      await publishAppRelease(payload, user);
+      setShowPublishVersionModal(false);
+      setMessage(`Versión v${payload.version} publicada correctamente. Los usuarios verán la actualización y las notas de parche.`);
+      setTimeout(() => setMessage(''), 8000);
+    } catch (err) {
+      console.error('Error publicando versión:', err);
+      setPublishVersionError(err?.message || 'No se pudo publicar la versión. Intenta nuevamente.');
+    } finally {
+      setIsPublishingVersion(false);
     }
   };
 
@@ -416,7 +515,7 @@ const Dashboard = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
             <h1 className="page-title" style={{ margin: 0 }}>Panel de Control</h1>
-            <VersionBubble label="v1.2" placement="bottom-start" />
+            <VersionBubble label={`v${currentVersion}`} placement="bottom-start" />
           </div>
           <p className="page-subtitle" style={{ margin: 0 }}>Bienvenido, {user.name || user.email} ({displayBranch})</p>
         </div>
@@ -505,6 +604,7 @@ const Dashboard = () => {
           onImportPins={handleImportPins}
           onCreateUser={() => setShowCreateModal(true)}
           onManageUsers={() => { fetchStaff(); setShowSystemUsersModal(true); }}
+          onPublishVersion={openPublishVersionModal}
         />
 
         <div className="admin-content">
@@ -787,6 +887,158 @@ const Dashboard = () => {
         />
       )}
 
+      {showPublishVersionModal && isGlobal && (
+        <div className="dashboard-modal-overlay">
+          <div className="dashboard-modal-content animate-fade-in" style={{ maxWidth: '720px' }}>
+            <button className="dashboard-modal-close" onClick={() => !isPublishingVersion && setShowPublishVersionModal(false)}>
+              <X size={24} />
+            </button>
+            <div className="section-header">
+              <Megaphone size={24} color="var(--color-primary)" />
+              <h2>Publicar versión y notas de parche</h2>
+            </div>
+            <p style={{ margin: '-0.5rem 0 1.25rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              Al publicar, todos los usuarios verán la nueva versión y la notificación con estas notas (según la ventana configurada).
+            </p>
+
+            <form onSubmit={handlePublishVersion} className="create-user-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Versión</label>
+                  <input
+                    type="text"
+                    value={versionForm.version}
+                    onChange={(e) => setVersionForm((prev) => ({ ...prev, version: e.target.value }))}
+                    placeholder="Ej: 1.3"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Fecha</label>
+                  <input
+                    type="text"
+                    value={versionForm.date}
+                    onChange={(e) => setVersionForm((prev) => ({ ...prev, date: e.target.value }))}
+                    placeholder="Ej: 20 de Noviembre, 2026"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Título de la actualización</label>
+                <input
+                  type="text"
+                  value={versionForm.title}
+                  onChange={(e) => setVersionForm((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Ej: Mejoras en ranking y panel de versiones"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                  <span>Notas de parche</span>
+                  <button
+                    type="button"
+                    className="btn-outline btn-outline-green"
+                    onClick={addVersionChangeRow}
+                    style={{ width: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+                  >
+                    <Plus size={16} /> Agregar nota
+                  </button>
+                </label>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {versionForm.changes.map((change, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '72px 1fr auto',
+                        gap: '0.5rem',
+                        alignItems: 'start',
+                        padding: '0.75rem',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '0.75rem',
+                        background: 'var(--color-bg, #f8fafc)'
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={change.icon}
+                        onChange={(e) => updateVersionChange(index, 'icon', e.target.value)}
+                        placeholder="Ícono"
+                        aria-label={`Ícono nota ${index + 1}`}
+                        style={{ textAlign: 'center' }}
+                      />
+                      <textarea
+                        value={change.text}
+                        onChange={(e) => updateVersionChange(index, 'text', e.target.value)}
+                        placeholder="Describe el cambio o mejora..."
+                        aria-label={`Texto nota ${index + 1}`}
+                        rows={2}
+                        style={{ resize: 'vertical', minHeight: '44px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeVersionChangeRow(index)}
+                        disabled={versionForm.changes.length === 1}
+                        title="Eliminar nota"
+                        style={{
+                          background: 'none',
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          borderRadius: '0.5rem',
+                          padding: '0.55rem',
+                          cursor: versionForm.changes.length === 1 ? 'not-allowed' : 'pointer',
+                          opacity: versionForm.changes.length === 1 ? 0.5 : 1
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {publishVersionError && (
+                <div style={{
+                  background: '#fef2f2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                  borderRadius: '0.75rem',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 500
+                }}>
+                  {publishVersionError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setShowPublishVersionModal(false)}
+                  disabled={isPublishingVersion}
+                  style={{ marginTop: 0 }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="create-btn"
+                  disabled={isPublishingVersion}
+                  style={{ marginTop: 0, alignSelf: 'auto', opacity: isPublishingVersion ? 0.7 : 1 }}
+                >
+                  {isPublishingVersion ? 'Publicando...' : 'Publicar versión'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {isImportingPins && (
         <div className="dashboard-modal-overlay loading-overlay">
           <div className="loading-spinner-container">
@@ -800,7 +1052,7 @@ const Dashboard = () => {
       <footer className="dashboard-footer">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span>Experiencia Tomasina</span>
-          <VersionBubble label="Versión 1.2" placement="top-center" />
+          <VersionBubble label={`Versión ${currentVersion}`} placement="top-center" />
         </div>
       </footer>
     </div>

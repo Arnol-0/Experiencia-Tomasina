@@ -77,6 +77,7 @@ const Navbar = () => {
           {/* Rutas principales del sistema */}
           <Link to="/" className="nav-link" onClick={closeMenu}>Panel</Link>
           <Link to="/directorio" className="nav-link" onClick={closeMenu}>Directorio</Link>
+          <Link to="/ranking" className="nav-link" onClick={closeMenu}>Ranking</Link>
 
           {/* Botón de cierre de sesión */}
           <button onClick={handleLogout} className="logout-btn" title="Cerrar sesión">

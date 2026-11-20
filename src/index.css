@@ -87,6 +87,21 @@ button {
   animation: fadeIn 0.5s ease-out forwards;
 }
 
+/* App layout */
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-layout main.with-navbar {
+  padding-top: 4.5rem;
+}
+
+@media (max-width: 768px) {
+  .app-layout main.with-navbar {
+    padding-top: 4.5rem;
+  }
+}
+
 /* Custom Scrollbar (Mac Style) */
 ::-webkit-scrollbar {
   width: 14px;

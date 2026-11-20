@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2, FileSpreadsheet, Zap } from 'lucide-react';
-import { ROLES } from '../utils/permissions';
+import { Users, Award, ShieldPlus, Trash2, UserPlus, Upload, Download, Settings, ChevronDown, Edit2, FileSpreadsheet, Zap, Megaphone } from 'lucide-react';
+import { ROLES, isAdmin } from '../utils/permissions';
 import TemplateDownloads from './TemplateDownloads';
 
 /**
@@ -33,7 +33,8 @@ const SidebarActions = ({
   onOpenAutoFill,
   onCreateUser, 
   onManageUsers,
-  onSearchEditStudent
+  onSearchEditStudent,
+  onPublishVersion
 }) => {
   const [openAccordion, setOpenAccordion] = useState('estudiantes');
 
@@ -140,6 +141,11 @@ const SidebarActions = ({
                 <button className="btn-outline btn-outline-green" onClick={onManageUsers}>
                   <Users size={18} /> Gestionar Usuarios
                 </button>
+                {onPublishVersion && (
+                  <button className="btn-outline btn-outline-green" onClick={onPublishVersion}>
+                    <Megaphone size={18} /> Publicar versión y notas
+                  </button>
+                )}
               </div>
             </div>
           )}

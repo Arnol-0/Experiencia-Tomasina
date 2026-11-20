@@ -48,7 +48,7 @@
   box-shadow: var(--shadow-lg);
   max-height: 250px;
   overflow-y: auto;
-  z-index: 100;
+  z-index: 300;
   padding: 0.5rem 0;
 }
 

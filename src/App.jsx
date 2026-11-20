@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Directory from './pages/Directory';
+import Ranking from './pages/Ranking';
 import StudentProfile from './pages/StudentProfile';
 import Login from './pages/Login';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -45,19 +46,21 @@ const PrivateRoute = ({ children }) => {
 
 
 function App() {
-  const { needsProfile } = useAuth();
+  const { user, needsProfile } = useAuth();
+  const showNavbar = !!user && !needsProfile;
 
   return (
     <ErrorBoundary>
       <Router>
         <div className="app-layout">
-          {!needsProfile && <Navbar />}
+          {showNavbar && <Navbar />}
           <VersionNotice />
-          <main>
+          <main className={showNavbar ? 'with-navbar' : ''}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               <Route path="/directorio" element={<PrivateRoute><Directory /></PrivateRoute>} />
+              <Route path="/ranking" element={<PrivateRoute><Ranking /></PrivateRoute>} />
               <Route path="/student/:id" element={<PrivateRoute><StudentProfile /></PrivateRoute>} />
             </Routes>
           </main>

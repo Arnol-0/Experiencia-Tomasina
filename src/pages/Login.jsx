@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAppVersion } from '../context/AppVersionContext';
 import { LogIn } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import lottie from 'lottie-web';
@@ -32,6 +33,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const lottieContainer = React.useRef(null);
   const { login, user } = useAuth();
+  const { currentVersion } = useAppVersion();
   const navigate = useNavigate();
 
 
@@ -172,7 +174,7 @@ const Login = () => {
 
         {/* Pie de versión interactivo con burbuja de creador */}
         <div className="login-credits">
-          <VersionBubble label="Versión 1.2" placement="top-center" />
+          <VersionBubble label={`Versión ${currentVersion}`} placement="top-center" />
         </div>
       </div>
     </div>

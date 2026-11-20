@@ -1,5 +1,5 @@
 .directory-page {
-  padding: 6rem 1.5rem 4rem;
+  padding: 2rem 1.5rem 4rem;
 }
 
 .directory-header {
@@ -211,7 +211,7 @@
 
 @media (max-width: 768px) {
   .directory-page {
-    padding: 6rem 1rem 2rem;
+    padding: 1.5rem 1rem 2rem;
   }
   
   .page-title {
